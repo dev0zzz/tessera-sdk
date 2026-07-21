@@ -1,6 +1,6 @@
 {
   "name": "tessera-sdk",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Shared integration layer for Tessera apps: OIDC relying-party (id.tessera.at) and PDS helpers",
   "license": "MIT",
   "repository": "github:dev0zzz/tessera-sdk",
@@ -28,6 +28,10 @@
     "./zaps": {
       "types": "./dist/zaps/index.d.ts",
       "default": "./dist/zaps/index.js"
+    },
+    "./zaps/element": {
+      "types": "./dist/zaps/element.d.ts",
+      "default": "./dist/zaps/element.js"
     }
   },
   "files": [
