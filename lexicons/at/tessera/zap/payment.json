@@ -1,0 +1,43 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.zap.payment",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A zap: a small public USDC payment from this repo's owner to another Tessera user, executed on the payment rail referenced by railRef. rkey is the idempotency key.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["to", "amountUsd", "rail", "railRef", "ts"],
+        "properties": {
+          "to": {
+            "type": "string",
+            "format": "did",
+            "description": "Recipient DID."
+          },
+          "amountUsd": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Amount in integer micro-USD (1 USDC = 1000000; atproto has no floats)."
+          },
+          "ref": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Optional: the zapped content (post, score, photo...)."
+          },
+          "rail": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "Payment rail identifier, e.g. 'hyperliquid'."
+          },
+          "railRef": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "Rail-specific transaction reference for third-party verification."
+          },
+          "ts": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}
