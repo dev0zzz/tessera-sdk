@@ -71,6 +71,15 @@ stores on a persistent volume, in-process refresh lock, and
 Tessera client shape. Composable pieces (`openOAuthDb`,
 `createSqliteStores`, `requestLock`) are exported individually.
 
+## Lexicons
+
+`lexicons/at/tessera/**` is the **canonical home** of every at.tessera.*
+schema (record collections AND XRPC methods). The atproto fork consumes
+copies at build time — after changing a schema here, run
+`scripts/sync-lexicons.sh [atproto-path]` and re-run the fork's
+`pnpm run codegen:lex` in `packages/pds`. The PDS validates the record
+collections server-side, so clients never need `validate: false`.
+
 ## Decision rule
 
 Apps that read/write the user's repo **as the user** use direct atproto

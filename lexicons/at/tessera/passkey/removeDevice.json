@@ -1,0 +1,20 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.passkey.removeDevice",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Remove one of the authenticated account's passkeys. Refuses to remove the last passkey.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["credentialId"],
+          "properties": {
+            "credentialId": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

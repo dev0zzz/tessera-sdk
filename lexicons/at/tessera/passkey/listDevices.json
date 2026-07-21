@@ -1,0 +1,35 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.passkey.listDevices",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List the authenticated account's registered passkeys (devices). Returns only display-safe fields.",
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["devices"],
+          "properties": {
+            "devices": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#device"
+              }
+            }
+          }
+        }
+      }
+    },
+    "device": {
+      "type": "object",
+      "required": ["credentialId", "name", "createdAt"],
+      "properties": {
+        "credentialId": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "datetime" }
+      }
+    }
+  }
+}

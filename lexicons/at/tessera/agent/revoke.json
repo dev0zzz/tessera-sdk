@@ -1,0 +1,19 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.agent.revoke",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Revoke an agent's service token immediately.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did"],
+          "properties": { "did": { "type": "string", "format": "did" } }
+        }
+      },
+      "errors": [{ "name": "AgentNotFound" }]
+    }
+  }
+}

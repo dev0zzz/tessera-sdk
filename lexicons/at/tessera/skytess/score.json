@@ -1,0 +1,30 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.skytess.score",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A pilot's best time for one SKYTESS level, stored in the pilot's own repo. rkey is 'level-<index>'.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["levelName", "levelIndex", "ms", "layout", "ts"],
+        "properties": {
+          "levelName": { "type": "string", "maxLength": 128 },
+          "levelIndex": { "type": "integer", "minimum": 0 },
+          "ms": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Run time in integer milliseconds (atproto has no floats)."
+          },
+          "layout": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Track-layout generation the time was set on; older generations don't compete."
+          },
+          "ts": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.agent.list",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List agents delegated by the caller.",
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["agents"],
+          "properties": {
+            "agents": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#agentView" }
+            }
+          }
+        }
+      }
+    },
+    "agentView": {
+      "type": "object",
+      "required": ["did", "handle", "createdAt"],
+      "properties": {
+        "did": { "type": "string", "format": "did" },
+        "handle": { "type": "string", "format": "handle" },
+        "createdAt": { "type": "string", "format": "datetime" },
+        "revokedAt": { "type": "string", "format": "datetime" }
+      }
+    }
+  }
+}

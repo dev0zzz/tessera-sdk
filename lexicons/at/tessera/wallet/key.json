@@ -1,0 +1,52 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.wallet.key",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "The user's non-custodial EVM wallet: one passkey-PRF-encrypted copy of the same secp256k1 private key per credential. Single record at rkey 'self'.",
+      "key": "literal:self",
+      "record": {
+        "type": "object",
+        "required": ["address", "linkSig", "keys"],
+        "properties": {
+          "address": {
+            "type": "string",
+            "maxLength": 42,
+            "description": "0x-prefixed EVM address derived from the wallet key."
+          },
+          "linkSig": {
+            "type": "string",
+            "description": "Signature over the at.tessera.wallet.link.v1:<did> message, binding the address to the DID."
+          },
+          "keys": {
+            "type": "array",
+            "items": { "type": "ref", "ref": "#keyCopy" }
+          }
+        }
+      }
+    },
+    "keyCopy": {
+      "type": "object",
+      "required": ["credentialId", "prfSalt", "iv", "ciphertext"],
+      "properties": {
+        "credentialId": {
+          "type": "string",
+          "description": "base64url id of the passkey credential this copy is encrypted for."
+        },
+        "prfSalt": {
+          "type": "string",
+          "description": "base64url PRF eval salt used to derive the encryption key."
+        },
+        "iv": {
+          "type": "string",
+          "description": "base64url AES-GCM initialization vector."
+        },
+        "ciphertext": {
+          "type": "string",
+          "description": "base64url AES-GCM ciphertext of the secp256k1 private key."
+        }
+      }
+    }
+  }
+}

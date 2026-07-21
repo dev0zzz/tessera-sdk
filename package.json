@@ -1,6 +1,6 @@
 {
   "name": "tessera-sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shared integration layer for Tessera apps: OIDC relying-party (id.tessera.at) and PDS helpers",
   "license": "MIT",
   "repository": "github:dev0zzz/tessera-sdk",

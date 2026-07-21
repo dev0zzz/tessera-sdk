@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.agent.create",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Create a delegated agent account owned by the caller. Returns a one-time service token.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["handle", "vaultKey"],
+          "properties": {
+            "handle": { "type": "string", "format": "handle" },
+            "vaultKey": { "type": "ref", "ref": "#vaultKeyMaterial" }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did", "handle", "token"],
+          "properties": {
+            "did": { "type": "string", "format": "did" },
+            "handle": { "type": "string", "format": "handle" },
+            "token": { "type": "string" }
+          }
+        }
+      },
+      "errors": [
+        { "name": "HandleNotAvailable" },
+        { "name": "AgentCannotCreateAgent" }
+      ]
+    },
+    "vaultKeyMaterial": {
+      "type": "object",
+      "required": ["credentialId", "prfSalt", "iv", "ciphertext"],
+      "properties": {
+        "credentialId": { "type": "string" },
+        "prfSalt": { "type": "string" },
+        "iv": { "type": "string" },
+        "ciphertext": { "type": "string" }
+      }
+    }
+  }
+}

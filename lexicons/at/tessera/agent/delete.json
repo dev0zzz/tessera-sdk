@@ -1,0 +1,19 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.agent.delete",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Fully delete a delegated agent account owned by the caller, tearing down its account, repo, and DID. Unlike revoke, this is irreversible.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did"],
+          "properties": { "did": { "type": "string", "format": "did" } }
+        }
+      },
+      "errors": [{ "name": "AgentNotFound" }]
+    }
+  }
+}
