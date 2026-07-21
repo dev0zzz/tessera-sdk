@@ -1,6 +1,6 @@
 {
   "name": "tessera-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared integration layer for Tessera apps: OIDC relying-party (id.tessera.at) and PDS helpers",
   "license": "MIT",
   "repository": "github:dev0zzz/tessera-sdk",
@@ -16,6 +16,14 @@
     "./oidc-rp": {
       "types": "./dist/oidc-rp/index.d.ts",
       "default": "./dist/oidc-rp/index.js"
+    },
+    "./auth-browser": {
+      "types": "./dist/auth-browser/index.d.ts",
+      "default": "./dist/auth-browser/index.js"
+    },
+    "./auth-node": {
+      "types": "./dist/auth-node/index.d.ts",
+      "default": "./dist/auth-node/index.js"
     }
   },
   "files": [
@@ -30,6 +38,31 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "@atproto/api": "^0.20.28",
+    "@atproto/oauth-client-browser": "^0.4.8",
+    "@atproto/oauth-client-node": "^0.4.8",
+    "better-sqlite3": "^12.11.1",
+    "@types/better-sqlite3": "^7.6.11"
+  },
+  "peerDependencies": {
+    "@atproto/api": ">=0.20.0",
+    "@atproto/oauth-client-browser": ">=0.4.0",
+    "@atproto/oauth-client-node": ">=0.4.0",
+    "better-sqlite3": ">=11.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@atproto/api": {
+      "optional": true
+    },
+    "@atproto/oauth-client-browser": {
+      "optional": true
+    },
+    "@atproto/oauth-client-node": {
+      "optional": true
+    },
+    "better-sqlite3": {
+      "optional": true
+    }
   }
 }

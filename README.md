@@ -48,6 +48,29 @@ const { url, cookie } = rp.buildAuthTransaction(optionalDidLoginHint);
 const did = await rp.completeAuthTransaction(url.searchParams, txCookieValue);
 ```
 
+### `tessera-sdk/auth-browser`
+
+Direct atproto OAuth for **browser** apps that read/write the user's repo
+(peer deps: `@atproto/api`, `@atproto/oauth-client-browser`). Loopback dev
+mode included; production uses a hosted `client-metadata.json`.
+
+```ts
+import { createBrowserAuth } from 'tessera-sdk/auth-browser';
+const auth = createBrowserAuth({ clientId: 'https://app.tessera.at/client-metadata.json' });
+const state = await auth.initAuth();       // session restore / callback
+await auth.signIn('login');                // straight to the passkey dialog
+const agent = auth.getAgent();             // authed Agent for repo writes
+```
+
+### `tessera-sdk/auth-node`
+
+Direct atproto OAuth for **server-side** apps (peer deps:
+`@atproto/oauth-client-node`, `better-sqlite3`): SQLite state/session
+stores on a persistent volume, in-process refresh lock, and
+`createTesseraNodeClient({ appUrl, clientName, dbPath })` for the standard
+Tessera client shape. Composable pieces (`openOAuthDb`,
+`createSqliteStores`, `requestLock`) are exported individually.
+
 ## Decision rule
 
 Apps that read/write the user's repo **as the user** use direct atproto
