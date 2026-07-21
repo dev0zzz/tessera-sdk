@@ -1,0 +1,35 @@
+{
+  "name": "tessera-sdk",
+  "version": "0.1.0",
+  "description": "Shared integration layer for Tessera apps: OIDC relying-party (id.tessera.at) and PDS helpers",
+  "license": "MIT",
+  "repository": "github:dev0zzz/tessera-sdk",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./oidc-rp": {
+      "types": "./dist/oidc-rp/index.d.ts",
+      "default": "./dist/oidc-rp/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -b",
+    "prepare": "npm run build",
+    "test": "node --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
