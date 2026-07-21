@@ -1,0 +1,20 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.admin.removeTrustedClient",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Admin: remove an OAuth client_id from the trusted list (env-list entries cannot be removed here).",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["clientId"],
+          "properties": {
+            "clientId": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

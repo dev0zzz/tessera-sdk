@@ -1,0 +1,21 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.admin.addTrustedClient",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Admin: add an OAuth client_id to the trusted list (skips the consent screen). Takes effect on the next client(-metadata) load — no PDS redeploy.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["clientId"],
+          "properties": {
+            "clientId": { "type": "string" },
+            "note": { "type": "string", "maxLength": 256 }
+          }
+        }
+      }
+    }
+  }
+}

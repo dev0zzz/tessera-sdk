@@ -1,0 +1,43 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.admin.listTrustedClients",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Admin: list OAuth client_ids that skip the consent screen (DB entries; the PDS_OAUTH_TRUSTED_CLIENTS env list applies additionally as bootstrap).",
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["clients"],
+          "properties": {
+            "clients": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#trustedClient"
+              }
+            }
+          }
+        }
+      }
+    },
+    "trustedClient": {
+      "type": "object",
+      "required": ["clientId", "createdAt"],
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        }
+      }
+    }
+  }
+}
