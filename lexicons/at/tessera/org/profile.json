@@ -1,0 +1,25 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.org.profile",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Marks this account as an organisation. An account without this record is a person.",
+      "key": "literal:self",
+      "record": {
+        "type": "object",
+        "required": ["displayName", "enrollment", "createdAt"],
+        "properties": {
+          "displayName": { "type": "string", "maxLength": 64 },
+          "enrollment": {
+            "type": "string",
+            "enum": ["curated", "open"],
+            "description": "curated = an admin attests each member; open = the org attests anyone who asks."
+          },
+          "description": { "type": "string", "maxLength": 256 },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}
