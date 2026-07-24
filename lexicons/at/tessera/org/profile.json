@@ -11,6 +11,12 @@
         "required": ["displayName", "enrollment", "createdAt"],
         "properties": {
           "displayName": { "type": "string", "maxLength": 64 },
+          "orgType": {
+            "type": "string",
+            "maxLength": 32,
+            "knownValues": ["company", "clan"],
+            "description": "The kind of organisation, for presentation and discovery: 'company' (formal, work) or 'clan' (community, belonging). Lowercase, digits and dashes only. Compared exactly by consumers — never ordered, never case-folded. Absent means unspecified; the client picks the default presentation. Open set: new kinds (e.g. guild, team) may be added without breaking older records."
+          },
           "enrollment": {
             "type": "string",
             "enum": ["curated", "open"],
