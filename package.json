@@ -1,6 +1,6 @@
 {
   "name": "tessera-sdk",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Shared integration layer for Tessera apps: OIDC relying-party (id.tessera.at) and PDS helpers",
   "license": "MIT",
   "repository": "github:dev0zzz/tessera-sdk",
@@ -16,6 +16,10 @@
     "./oidc-rp": {
       "types": "./dist/oidc-rp/index.d.ts",
       "default": "./dist/oidc-rp/index.js"
+    },
+    "./orgs": {
+      "types": "./dist/orgs/index.d.ts",
+      "default": "./dist/orgs/index.js"
     },
     "./auth-browser": {
       "types": "./dist/auth-browser/index.d.ts",
