@@ -72,8 +72,31 @@ export function createEudiVerifier(config: EudiVerifierConfig): EudiVerifier {
       throw new EudiVerificationError("no verifier configured", "malformed");
     });
 
-  async function verifyPresentation(): Promise<VerifiedPresentation> {
-    throw new EudiVerificationError("not implemented", "malformed");
+  async function verifyPresentation(
+    vpToken: string,
+    expectedNonce: string,
+  ): Promise<VerifiedPresentation> {
+    const content = await verifier(vpToken, resolveIssuerKey);
+
+    if (!content.hasKeyBinding) {
+      throw new EudiVerificationError("presentation lacks key binding", "missing_key_binding");
+    }
+    if (content.keyBindingAudience !== config.expectedAudience) {
+      throw new EudiVerificationError("audience mismatch", "audience_mismatch");
+    }
+    if (content.keyBindingNonce !== expectedNonce) {
+      throw new EudiVerificationError("nonce mismatch", "nonce_mismatch");
+    }
+
+    const t = now();
+    if (content.notBefore !== undefined && t < content.notBefore) {
+      throw new EudiVerificationError("credential not yet valid", "not_yet_valid");
+    }
+    if (content.expiresAt !== undefined && t >= content.expiresAt) {
+      throw new EudiVerificationError("credential expired", "expired");
+    }
+
+    return { issuer: content.issuer, claims: content.claims, verifiedAt: t };
   }
 
   return { verifyPresentation };
