@@ -24,8 +24,8 @@
       "required": ["id", "createdAt"],
       "properties": {
         "id": { "type": "string" },
-        "createdAt": { "type": "string" },
-        "revokedAt": { "type": "string" }
+        "createdAt": { "type": "string", "format": "datetime" },
+        "revokedAt": { "type": "string", "format": "datetime" }
       }
     }
   }
