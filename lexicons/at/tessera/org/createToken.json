@@ -20,10 +20,7 @@
           "properties": { "token": { "type": "string" } }
         }
       },
-      "errors": [
-        { "name": "NotAnOrg" },
-        { "name": "AgentCannotMintOrgToken" }
-      ]
+      "errors": [{ "name": "NotAnOrg" }, { "name": "AgentCannotMintOrgToken" }]
     }
   }
 }
