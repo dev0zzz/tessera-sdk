@@ -1,0 +1,19 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.org.revokeToken",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Revoke one of this org's service tokens by its id (from listTokens). The revoked token can immediately open no new session; any session already issued from it expires within minutes.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["id"],
+          "properties": { "id": { "type": "string" } }
+        }
+      },
+      "errors": [{ "name": "NoActiveToken" }]
+    }
+  }
+}

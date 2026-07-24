@@ -1,0 +1,31 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.org.createSession",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Exchange an org service token for a session scoped to writing at.tessera.org.attestation records in the org's own repo.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["token"],
+          "properties": { "token": { "type": "string" } }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did", "handle", "accessJwt"],
+          "properties": {
+            "did": { "type": "string", "format": "did" },
+            "handle": { "type": "string", "format": "handle" },
+            "accessJwt": { "type": "string" }
+          }
+        }
+      },
+      "errors": [{ "name": "InvalidToken" }]
+    }
+  }
+}

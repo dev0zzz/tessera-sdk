@@ -1,0 +1,32 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.org.listTokens",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List this org's service tokens. Token values are never returned — only an opaque id (used for revocation) and lifecycle timestamps.",
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["tokens"],
+          "properties": {
+            "tokens": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#token" }
+            }
+          }
+        }
+      }
+    },
+    "token": {
+      "type": "object",
+      "required": ["id", "createdAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "datetime" },
+        "revokedAt": { "type": "string", "format": "datetime" }
+      }
+    }
+  }
+}

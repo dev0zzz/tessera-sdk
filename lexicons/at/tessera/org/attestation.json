@@ -1,0 +1,39 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.org.attestation",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "The authoritative half of a membership: this org's repo asserts that `subject` is a member. The record key IS the member's DID, so a membership check is a single getRecord and listRecords yields the full member list.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["subject", "role", "validFrom", "createdAt"],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "format": "did",
+            "description": "The member. MUST equal the record key; a mismatch makes the record invalid, not a membership."
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 32,
+            "knownValues": ["member", "admin"],
+            "description": "Lowercase, digits and dashes only. Compared exactly by consumers — never ordered, never case-folded."
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Start of the membership."
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "datetime",
+            "description": "End of the membership. Absent means open-ended."
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.org.membership",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "The display half of a membership, in the member's own repo. If `org` is set the record key MUST be that org DID; otherwise (pure flair) it is a TID. Self-asserted — never authoritative for authorization.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["label", "createdAt"],
+        "properties": {
+          "org": {
+            "type": "string",
+            "format": "did",
+            "description": "The org's DID, when one exists. Absent means pure flair that nobody attests."
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Display name. Authoritative for the name is at.tessera.org.profile.displayName when `org` is set."
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}
