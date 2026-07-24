@@ -5,6 +5,8 @@
  * Pure & stateless. Node-only. Peer/crypto dep: @sd-jwt/sd-jwt-vc (via ./sdjwt.js).
  */
 
+import { defaultCredentialVerifier } from "./sdjwt.js";
+
 export type EudiErrorCode =
   | "malformed"
   | "untrusted_issuer"
@@ -65,12 +67,7 @@ export function createEudiVerifier(config: EudiVerifierConfig): EudiVerifier {
   const now = config.now ?? (() => Math.floor(Date.now() / 1000));
   const anchors = new Map(config.trustAnchors.map((a) => [a.issuer, a.publicKeyJwk]));
   const resolveIssuerKey = (issuer: string) => anchors.get(issuer);
-  // Real primitive wired in Task 6; injectable for tests.
-  const verifier: CredentialVerifier =
-    config.verifier ??
-    (() => {
-      throw new EudiVerificationError("no verifier configured", "malformed");
-    });
+  const verifier: CredentialVerifier = config.verifier ?? defaultCredentialVerifier;
 
   async function verifyPresentation(
     vpToken: string,
