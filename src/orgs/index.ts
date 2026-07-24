@@ -39,6 +39,8 @@ export interface Badge {
   label: string;
   org?: string;
   state: BadgeState;
+  /** Present only for verified badges when the attestation carries a role. */
+  role?: string;
 }
 
 /**
@@ -191,8 +193,13 @@ export function createOrgs(config: OrgsConfig = {}): Orgs {
         out.push({ label, state: "flair" });
         continue;
       }
-      const { member } = await verifyMembership(memberDid, org); // local fn, no `this`
-      out.push({ label, org, state: member ? "verified" : "unverified" });
+      const { member, role } = await verifyMembership(memberDid, org); // local fn, no `this`
+      out.push({
+        label,
+        org,
+        state: member ? "verified" : "unverified",
+        ...(member && role ? { role } : {}),
+      });
     }
     return out;
   }

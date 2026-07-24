@@ -215,7 +215,7 @@ test("listBadges classifies flair / verified / unverified", async () => {
   const badges = await orgs.listBadges(MEMBER);
   assert.deepEqual(badges, [
     { label: "Haus Slytherin", state: "flair" },
-    { label: "Spiral GmbH", org: "did:plc:verified", state: "verified" },
+    { label: "Spiral GmbH", org: "did:plc:verified", state: "verified", role: "member" },
     { label: "Ghost Inc", org: "did:plc:none", state: "unverified" },
   ]);
 });

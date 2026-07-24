@@ -71,3 +71,23 @@ test('completeAuthTransaction rejects a missing tx cookie', async () => {
     OidcError,
   );
 });
+
+const scopeOf = (rp: ReturnType<typeof createOidcRp>) =>
+  new URL(rp.buildAuthTransaction().url).searchParams.get('scope');
+
+test('buildAuthTransaction defaults to openid only', () => {
+  assert.equal(scopeOf(createOidcRp(config)), 'openid');
+});
+
+test('buildAuthTransaction passes configured scopes and keeps openid first', () => {
+  assert.equal(scopeOf(createOidcRp({ ...config, scopes: ['openid', 'orgs'] })), 'openid orgs');
+});
+
+test('buildAuthTransaction injects openid when the caller omits it', () => {
+  const scope = scopeOf(createOidcRp({ ...config, scopes: ['orgs'] }));
+  assert.ok(scope?.split(' ').includes('openid'), `expected openid in "${scope}"`);
+});
+
+test('buildAuthTransaction ignores an empty scopes array (defaults to openid)', () => {
+  assert.equal(scopeOf(createOidcRp({ ...config, scopes: [] })), 'openid');
+});
