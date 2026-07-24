@@ -17,6 +17,12 @@ test("real vector verifies against its trust anchor", async () => {
   const out = await v.verifyPresentation(vp, EXPECTED_NONCE);
   assert.equal(typeof out.issuer, "string");
   assert.ok("age_over_18" in out.claims);
+  // Selective-disclosure non-leakage: undisclosed claims and SD-JWT internal
+  // bookkeeping keys must never appear in the claims returned to callers.
+  assert.ok(!("given_name" in out.claims));
+  assert.ok(!("birthdate" in out.claims));
+  assert.ok(!("_sd" in out.claims));
+  assert.ok(!("_sd_alg" in out.claims));
 });
 
 test("tampered issuer signature -> bad_signature", async () => {
@@ -64,5 +70,13 @@ test("malformed trust-anchor key -> untrusted_issuer (not a bare TypeError)", as
   await assert.rejects(
     v.verifyPresentation(vp, EXPECTED_NONCE),
     (e) => e instanceof EudiVerificationError && e.code === "untrusted_issuer",
+  );
+});
+
+test("wrong expected nonce -> nonce_mismatch, via real primitive", async () => {
+  const v = createEudiVerifier({ trustAnchors: anchors, expectedAudience: EXPECTED_AUDIENCE, now: () => AT });
+  await assert.rejects(
+    v.verifyPresentation(vp, "wrong-nonce"),
+    (e) => e instanceof EudiVerificationError && e.code === "nonce_mismatch",
   );
 });

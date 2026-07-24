@@ -78,6 +78,6 @@
     }
   },
   "dependencies": {
-    "@sd-jwt/sd-jwt-vc": "^0.20.0"
+    "@sd-jwt/sd-jwt-vc": "0.20.0"
   }
 }

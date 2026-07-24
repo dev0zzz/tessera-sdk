@@ -100,6 +100,16 @@ function kbVerifier(data: string, sig: string, payload: { cnf?: { jwk?: JsonWebK
  * returns. We trust nbf/exp/iat here because they are always plain
  * (non-selectively-disclosed) claims on the issuer JWT — reading them before
  * signature verification is exactly as safe as reading `iss` is.
+ *
+ * This "neutralize the library's internal clock, enforce our own on the
+ * outside" trick relies on `@sd-jwt/core` internal semantics: `currentDate`
+ * governs the library's internal nbf/exp check, and supplying
+ * `keyBindingNonce` (below, in `sdjwt.verify(...)`) is what triggers KB
+ * verification at all. Documented as the "Library API contract" in
+ * test/fixtures/eudi/README.md. That coupling to undocumented internals is
+ * why `@sd-jwt/sd-jwt-vc` is pinned to an exact version in package.json —
+ * a silent patch bump must not be allowed to change this behavior underneath
+ * us.
  */
 function pickNeutralCurrentDate(payload: Record<string, unknown>): number {
   if (typeof payload.iat === "number") return payload.iat;
