@@ -85,3 +85,20 @@ test("wrong audience -> audience_mismatch", async () => {
 test("wrong nonce -> nonce_mismatch", async () => {
   await expectCode(verifierFor(goodContent).verifyPresentation("vp", "different-nonce"), "nonce_mismatch");
 });
+
+test("expired credential -> expired", async () => {
+  const v = mk({ trustAnchors: [ANCHOR], expectedAudience: "rp.example", now: () => 2000, verifier: fakeVerifier(goodContent) });
+  await expectCode(v.verifyPresentation("vp", "n-123"), "expired"); // t === expiresAt is expired
+});
+
+test("not yet valid -> not_yet_valid", async () => {
+  const v = mk({ trustAnchors: [ANCHOR], expectedAudience: "rp.example", now: () => 999, verifier: fakeVerifier(goodContent) });
+  await expectCode(v.verifyPresentation("vp", "n-123"), "not_yet_valid");
+});
+
+test("no window bounds -> accepted", async () => {
+  const noWindow = { ...goodContent, notBefore: undefined, expiresAt: undefined };
+  const v = mk({ trustAnchors: [ANCHOR], expectedAudience: "rp.example", now: () => 42, verifier: fakeVerifier(noWindow) });
+  const out = await v.verifyPresentation("vp", "n-123");
+  assert.equal(out.verifiedAt, 42);
+});
