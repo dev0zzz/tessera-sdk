@@ -23,3 +23,46 @@ test("tampered issuer signature -> bad_signature", async () => {
   const v = createEudiVerifier({ trustAnchors: anchors, expectedAudience: EXPECTED_AUDIENCE, now: () => AT });
   await assert.rejects(v.verifyPresentation(tampered, EXPECTED_NONCE), (e) => e instanceof EudiVerificationError && e.code === "bad_signature");
 });
+
+test("untrusted issuer (empty trust-anchor list) -> untrusted_issuer, via real primitive", async () => {
+  const v = createEudiVerifier({ trustAnchors: [], expectedAudience: EXPECTED_AUDIENCE, now: () => AT });
+  await assert.rejects(
+    v.verifyPresentation(vp, EXPECTED_NONCE),
+    (e) => e instanceof EudiVerificationError && e.code === "untrusted_issuer",
+  );
+});
+
+test("missing key binding (KB-JWT segment stripped) -> missing_key_binding, via real primitive", async () => {
+  const withoutKb = vp.slice(0, vp.lastIndexOf("~") + 1);
+  const v = createEudiVerifier({ trustAnchors: anchors, expectedAudience: EXPECTED_AUDIENCE, now: () => AT });
+  await assert.rejects(
+    v.verifyPresentation(withoutKb, EXPECTED_NONCE),
+    (e) => e instanceof EudiVerificationError && e.code === "missing_key_binding",
+  );
+});
+
+test("expired (now just past exp) -> expired, via real primitive", async () => {
+  const v = createEudiVerifier({
+    trustAnchors: anchors,
+    expectedAudience: EXPECTED_AUDIENCE,
+    now: () => 1781536001, // 1s past the fixture's exp=1781536000
+  });
+  await assert.rejects(
+    v.verifyPresentation(vp, EXPECTED_NONCE),
+    (e) => e instanceof EudiVerificationError && e.code === "expired",
+  );
+});
+
+test("malformed trust-anchor key -> untrusted_issuer (not a bare TypeError)", async () => {
+  const malformedAnchors = [
+    {
+      issuer: "https://issuer.example/eudi",
+      publicKeyJwk: { kty: "EC", crv: "P-256", x: "not-valid-base64url-coords!!", y: "also-not-valid!!" },
+    },
+  ];
+  const v = createEudiVerifier({ trustAnchors: malformedAnchors, expectedAudience: EXPECTED_AUDIENCE, now: () => AT });
+  await assert.rejects(
+    v.verifyPresentation(vp, EXPECTED_NONCE),
+    (e) => e instanceof EudiVerificationError && e.code === "untrusted_issuer",
+  );
+});

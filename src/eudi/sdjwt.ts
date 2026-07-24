@@ -143,12 +143,21 @@ export const defaultCredentialVerifier: CredentialVerifier = async (vpToken, res
     throw new EudiVerificationError("unparseable key binding JWT", "malformed");
   }
 
-  const sdjwt = new SDJwtVcInstance({
-    hasher,
-    hashAlg: "sha-256",
-    verifier: makeJwkVerifier(key),
-    kbVerifier,
-  });
+  let sdjwt: SDJwtVcInstance;
+  try {
+    sdjwt = new SDJwtVcInstance({
+      hasher,
+      hashAlg: "sha-256",
+      verifier: makeJwkVerifier(key),
+      kbVerifier,
+    });
+  } catch (e) {
+    // A malformed/unusable trust-anchor key means the issuer's trust cannot
+    // be established — this is an operator-config problem, not a signature
+    // failure, so it must NOT be mapped to "bad_signature".
+    const detail = e instanceof Error ? e.message : String(e);
+    throw new EudiVerificationError(`unusable trust-anchor key for issuer ${iss}: ${detail}`, "untrusted_issuer");
+  }
 
   let result;
   try {
