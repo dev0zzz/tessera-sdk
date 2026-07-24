@@ -48,6 +48,44 @@ const { url, cookie } = rp.buildAuthTransaction(optionalDidLoginHint);
 const did = await rp.completeAuthTransaction(url.searchParams, txCookieValue);
 ```
 
+### `tessera-sdk/eudi`
+
+Verify a state-signed EUDI presentation (SD-JWT VC over OpenID4VP) against
+an EU trust list and return only the selectively-disclosed claims. Pure,
+stateless, Node-only. **Fetching/refreshing the trust list is the caller's
+responsibility** — this module only checks a presentation against the
+`trustAnchors` it's handed; it never fetches or caches anything itself.
+
+```ts
+import { createEudiVerifier, EudiVerificationError } from 'tessera-sdk/eudi';
+
+const verifier = createEudiVerifier({
+  trustAnchors: [{ issuer: 'https://issuer.example', publicKeyJwk }],
+  expectedAudience: 'https://relying-party.example',
+});
+
+try {
+  const { issuer, claims, verifiedAt } = await verifier.verifyPresentation(
+    vpToken,
+    expectedNonce,
+  );
+} catch (err) {
+  if (err instanceof EudiVerificationError) {
+    // err.code: 'malformed' | 'untrusted_issuer' | 'bad_signature' | 'expired'
+    //         | 'not_yet_valid' | 'audience_mismatch' | 'nonce_mismatch'
+    //         | 'missing_key_binding'
+  }
+}
+```
+
+`verifyPresentation(vpToken, expectedNonce)` checks the SD-JWT signature
+against the configured trust anchors, key-binding audience/nonce, and
+validity window, then returns the disclosed `claims` — never the raw
+credential. `malformed` / `bad_signature` / `untrusted_issuer` /
+`missing_key_binding` come from the signature/structure layer;
+`audience_mismatch` / `nonce_mismatch` / `expired` / `not_yet_valid` come
+from the policy layer.
+
 ### `tessera-sdk/auth-browser`
 
 Direct atproto OAuth for **browser** apps that read/write the user's repo

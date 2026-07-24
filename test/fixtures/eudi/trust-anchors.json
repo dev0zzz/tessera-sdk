@@ -1,0 +1,11 @@
+[
+  {
+    "issuer": "https://issuer.example/eudi",
+    "publicKeyJwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "J_SOKLImLRskOfezCmEtMXKEKal81EsqrS2XmAAFyac",
+      "y": "IVFcbQSJRNsebHgSDkG0Orp1jN9OnAUUJxipRKs5QmE"
+    }
+  }
+]
