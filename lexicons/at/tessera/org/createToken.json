@@ -1,0 +1,29 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.org.createToken",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Mint a service token for the calling org account itself. The token may only write at.tessera.org.attestation records into this org's own repo.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["token"],
+          "properties": { "token": { "type": "string" } }
+        }
+      },
+      "errors": [
+        { "name": "NotAnOrg" },
+        { "name": "AgentCannotMintOrgToken" }
+      ]
+    }
+  }
+}
