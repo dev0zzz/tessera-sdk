@@ -88,6 +88,45 @@ test("verifyMembership rejects after validUntil", async () => {
   assert.deepEqual(await orgs.verifyMembership(MEMBER, ORG), { member: false });
 });
 
+// fail-closed on malformed/typed time fields (the Date.parse NaN trap)
+
+test("verifyMembership rejects a malformed validUntil string (fail-closed)", async () => {
+  const orgs = createOrgs({
+    fetch: fakeFetch([validAttestation({ validUntil: "2020-13-45" })]),
+  });
+  assert.deepEqual(await orgs.verifyMembership(MEMBER, ORG), { member: false });
+});
+
+test("verifyMembership rejects a number-typed validUntil (fail-closed)", async () => {
+  const orgs = createOrgs({
+    fetch: fakeFetch([validAttestation({ validUntil: 1577836800000 })]),
+  });
+  assert.deepEqual(await orgs.verifyMembership(MEMBER, ORG), { member: false });
+});
+
+test("verifyMembership rejects a missing validFrom (fail-closed)", async () => {
+  const orgs = createOrgs({
+    fetch: fakeFetch([validAttestation({ validFrom: undefined })]),
+  });
+  assert.deepEqual(await orgs.verifyMembership(MEMBER, ORG), { member: false });
+});
+
+test("verifyMembership rejects a number-typed validFrom (fail-closed)", async () => {
+  const orgs = createOrgs({
+    fetch: fakeFetch([validAttestation({ validFrom: 4102444800000 })]),
+  });
+  assert.deepEqual(await orgs.verifyMembership(MEMBER, ORG), { member: false });
+});
+
+test("verifyMembership throws on a 400 that is not RecordNotFound", async () => {
+  const orgs = createOrgs({
+    fetch: fakeFetch([
+      { match: "getRecord", status: 400, body: { error: "InvalidRequest" } },
+    ]),
+  });
+  await assert.rejects(() => orgs.verifyMembership(MEMBER, ORG), OrgsPdsError);
+});
+
 // --- listMembers ---
 
 test("listMembers returns the org roster, filtering time-invalid rows", async () => {
@@ -167,7 +206,10 @@ test("listBadges classifies flair / verified / unverified", async () => {
           { status: 200 },
         );
       }
-      return new Response("null", { status: 400 }); // did:plc:none -> no attestation
+      // did:plc:none -> no attestation (realistic RecordNotFound shape)
+      return new Response(JSON.stringify({ error: "RecordNotFound" }), {
+        status: 400,
+      });
     }) as typeof fetch,
   });
   const badges = await orgs.listBadges(MEMBER);

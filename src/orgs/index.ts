@@ -3,6 +3,11 @@
  * Fetch-only (no @atproto/api), isomorphic. Verifies the authoritative
  * attestation in the org's repo (never the self-asserted membership in the
  * member's repo) and derives display badges from the member's memberships.
+ *
+ * TRUST: this client trusts the PDS's getRecord/listRecords response as-is; it
+ * does not verify the atproto repo signature against the DID's signing key. A
+ * hostile or MITM'd PDS (or a bad `pdsUrl`) can forge membership. Point it only
+ * at a trusted PDS.
  */
 import { TESSERA_PDS } from "../core/index.js";
 
@@ -48,6 +53,25 @@ export interface Orgs {
   listBadges(memberDid: string): Promise<Badge[]>;
 }
 
+/**
+ * Fail-closed time-window check for an attestation. Returns true ONLY if
+ * validFrom is a valid, already-past datetime string and validUntil (if
+ * present) is a valid, still-future datetime string. Missing validFrom, a
+ * non-string, or an unparseable date (Date.parse → NaN) → false — a malformed
+ * or number-typed bound must never silently grant or fail to revoke access.
+ */
+function withinValidWindow(v: Record<string, unknown>): boolean {
+  const now = Date.now();
+  const from = typeof v.validFrom === "string" ? Date.parse(v.validFrom) : NaN;
+  if (!Number.isFinite(from) || from > now) return false;
+  if (v.validUntil !== undefined) {
+    const until =
+      typeof v.validUntil === "string" ? Date.parse(v.validUntil) : NaN;
+    if (!Number.isFinite(until) || until < now) return false;
+  }
+  return true;
+}
+
 export function createOrgs(config: OrgsConfig = {}): Orgs {
   const pds = (config.pdsUrl ?? TESSERA_PDS).replace(/\/$/, "");
   const fetchFn = config.fetch ?? globalThis.fetch;
@@ -67,7 +91,17 @@ export function createOrgs(config: OrgsConfig = {}): Orgs {
     } catch {
       throw new OrgsPdsError("Tessera PDS unreachable");
     }
-    if (res.status === 400 || res.status === 404) return null; // RecordNotFound
+    if (res.status === 404) return null;
+    if (res.status === 400) {
+      // 400 is RecordNotFound OR InvalidRequest/RepoNotFound/… Only a confirmed
+      // not-found is "not a member"; anything else is an error we must surface,
+      // not silently deny (which would lock out a real member).
+      const b = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (b?.error === "RecordNotFound") return null;
+      throw new OrgsPdsError(`PDS getRecord 400: ${b?.error ?? "unknown"}`);
+    }
     if (!res.ok) throw new OrgsPdsError(`PDS getRecord failed: ${res.status}`);
     const data = (await res.json().catch(() => null)) as {
       value?: Record<string, unknown>;
@@ -81,6 +115,7 @@ export function createOrgs(config: OrgsConfig = {}): Orgs {
   ): Promise<Array<{ uri: string; value: Record<string, unknown> }>> {
     const out: Array<{ uri: string; value: Record<string, unknown> }> = [];
     let cursor: string | undefined;
+    let pages = 0;
     do {
       const url =
         `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(repo)}` +
@@ -98,8 +133,11 @@ export function createOrgs(config: OrgsConfig = {}): Orgs {
         cursor?: string;
       } | null;
       if (data?.records) out.push(...data.records);
-      cursor = data?.cursor;
-    } while (cursor);
+      // Stop on a non-advancing cursor (a malformed/hostile PDS returning the
+      // same cursor would otherwise loop forever) and cap total pages.
+      if (!data?.cursor || data.cursor === cursor) break;
+      cursor = data.cursor;
+    } while (++pages < 50);
     return out;
   }
 
@@ -111,11 +149,7 @@ export function createOrgs(config: OrgsConfig = {}): Orgs {
     if (!rec) return { member: false };
     const v = rec.value;
     if (v.subject !== memberDid) return { member: false };
-    const now = Date.now();
-    if (typeof v.validFrom === "string" && Date.parse(v.validFrom) > now)
-      return { member: false };
-    if (typeof v.validUntil === "string" && Date.parse(v.validUntil) < now)
-      return { member: false };
+    if (!withinValidWindow(v)) return { member: false };
     return {
       member: true,
       role: typeof v.role === "string" ? v.role : undefined,
@@ -124,30 +158,28 @@ export function createOrgs(config: OrgsConfig = {}): Orgs {
 
   async function listMembers(orgDid: string): Promise<OrgMember[]> {
     const recs = await listRecords(orgDid, ATTESTATION);
-    const now = Date.now();
     const out: OrgMember[] = [];
     for (const r of recs) {
       const v = r.value;
       // subject === rkey is enforced server-side, so subject is trustworthy.
-      if (
-        typeof v.subject !== "string" ||
-        typeof v.role !== "string" ||
-        typeof v.validFrom !== "string"
-      )
-        continue;
-      if (Date.parse(v.validFrom) > now) continue;
-      if (typeof v.validUntil === "string" && Date.parse(v.validUntil) < now)
-        continue;
+      if (typeof v.subject !== "string" || typeof v.role !== "string") continue;
+      if (!withinValidWindow(v)) continue; // fail-closed, handles NaN/non-string
       out.push({
         did: v.subject,
         role: v.role,
-        validFrom: v.validFrom,
+        validFrom: v.validFrom as string, // guaranteed string by withinValidWindow
         validUntil: typeof v.validUntil === "string" ? v.validUntil : undefined,
       });
     }
     return out;
   }
 
+  // NOTE for consumers: `label` and `org` come from the member's OWN repo and
+  // are self-asserted. `state:'verified'` means only "the org DID `org`
+  // attests this member" — NOT that `org` is the real organisation behind
+  // `label`. A user can set label:'Spiral GmbH' pointing at an org DID they
+  // control. Consumers MUST check `org` against a known-org allowlist before
+  // trusting `label`; never render a bare "✓ {label}".
   async function listBadges(memberDid: string): Promise<Badge[]> {
     const recs = await listRecords(memberDid, MEMBERSHIP);
     const out: Badge[] = [];
