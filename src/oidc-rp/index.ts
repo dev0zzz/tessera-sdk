@@ -30,6 +30,8 @@ export interface OidcRpConfig {
   redirectUri: string;
   /** HMAC key for the short-lived transaction cookie. */
   sessionSecret: string;
+  /** OAuth scopes to request. `openid` is always included. Default `['openid']`. */
+  scopes?: string[];
 }
 
 export interface OidcTx {
@@ -84,11 +86,14 @@ export function createOidcRp(config: OidcRpConfig): OidcRp {
     const nonce = b64url(randomBytes(24));
     const verifier = b64url(randomBytes(48));
     const challenge = b64url(createHash('sha256').update(verifier).digest());
+    const scopeList = config.scopes && config.scopes.length ? [...config.scopes] : ['openid'];
+    if (!scopeList.includes('openid')) scopeList.unshift('openid');
+    const scope = scopeList.join(' ');
     const params = new URLSearchParams({
       client_id: config.clientId,
       redirect_uri: config.redirectUri,
       response_type: 'code',
-      scope: 'openid',
+      scope,
       state,
       nonce,
       code_challenge: challenge,
