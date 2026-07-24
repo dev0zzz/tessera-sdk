@@ -45,13 +45,13 @@
     "test": "node --test test/*.test.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "typescript": "^5.7.0",
     "@atproto/api": "^0.20.28",
     "@atproto/oauth-client-browser": "^0.4.8",
     "@atproto/oauth-client-node": "^0.4.8",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.10.0",
     "better-sqlite3": "^12.11.1",
-    "@types/better-sqlite3": "^7.6.11"
+    "typescript": "^5.7.0"
   },
   "peerDependencies": {
     "@atproto/api": ">=0.20.0",
@@ -72,5 +72,8 @@
     "better-sqlite3": {
       "optional": true
     }
+  },
+  "dependencies": {
+    "@sd-jwt/sd-jwt-vc": "^0.20.0"
   }
 }
