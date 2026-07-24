@@ -4,14 +4,18 @@
   "defs": {
     "main": {
       "type": "procedure",
-      "description": "Remove one of the authenticated account's passkeys. Refuses to remove the last passkey.",
+      "description": "Remove one of the authenticated account's passkeys. Refuses to remove the last passkey, or the last passkey that can unlock the wallet (unless abandonWallet is set).",
       "input": {
         "encoding": "application/json",
         "schema": {
           "type": "object",
           "required": ["credentialId"],
           "properties": {
-            "credentialId": { "type": "string" }
+            "credentialId": { "type": "string" },
+            "abandonWallet": {
+              "type": "boolean",
+              "description": "Proceed even if this removes the last passkey holding a wallet copy, permanently abandoning the wallet. For wallets the user knowingly discards (e.g. empty / never funded)."
+            }
           }
         }
       }
