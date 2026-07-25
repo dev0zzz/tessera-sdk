@@ -41,7 +41,34 @@ export interface OidcTx {
   exp: number;
 }
 
-export class OidcError extends Error {}
+/** Why a login-transaction cookie could not be used. */
+export type TxFailureReason =
+  /** No cookie reached us — check cookie attributes and the redirect chain. */
+  | 'absent'
+  /** Present but not our format — truncated, or a leftover from another app. */
+  | 'malformed'
+  /** Signed with a different `sessionSecret` — key rotation or config mismatch. */
+  | 'bad-signature'
+  /** Aged out (10 min) — the user took too long between start and callback. */
+  | 'expired'
+  /** Well-formed and authentic, but missing `state`/`verifier`. */
+  | 'incomplete';
+
+type TxInspection = { ok: true; tx: OidcTx } | { ok: false; reason: TxFailureReason };
+
+export class OidcError extends Error {
+  /**
+   * Set when the failure was the login-transaction cookie. Lets a caller log the
+   * precise fault and treat a merely-lost cookie differently from a signature
+   * mismatch, which can signal tampering.
+   */
+  readonly reason?: TxFailureReason;
+
+  constructor(message: string, reason?: TxFailureReason) {
+    super(message);
+    this.reason = reason;
+  }
+}
 
 export interface OidcRp {
   /** Starts a login: returns the authorize URL and the tx-cookie VALUE to set. */
@@ -79,20 +106,40 @@ export function createOidcRp(config: OidcRpConfig): OidcRp {
     return `${payload}.${sign(payload, config.sessionSecret)}`;
   }
 
-  function readTxCookie(value: string): OidcTx | null {
+  /**
+   * Same check as readTxCookie, but says WHY it failed.
+   *
+   * Collapsing every cause into one null was a diagnosability dead end: a
+   * cookie the browser never sent, one signed with a different secret, and one
+   * that simply aged out are three very different faults — the first points at
+   * cookie attributes or a redirect chain, the second at a key/config mismatch,
+   * the third at a user who took too long. Callers can log the reason and, for
+   * example, silently restart a login that merely lost its cookie.
+   */
+  function inspectTxCookie(value: string | undefined): TxInspection {
+    if (!value) return { ok: false, reason: 'absent' };
     const [payload, sig] = value.split('.');
-    if (!payload || !sig) return null;
+    if (!payload || !sig) return { ok: false, reason: 'malformed' };
     const expected = sign(payload, config.sessionSecret);
     const got = Buffer.from(sig);
     const exp = Buffer.from(expected);
-    if (got.length !== exp.length || !timingSafeEqual(got, exp)) return null;
-    try {
-      const tx = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as OidcTx;
-      if (!tx.state || !tx.verifier || tx.exp < Date.now()) return null;
-      return tx;
-    } catch {
-      return null;
+    if (got.length !== exp.length || !timingSafeEqual(got, exp)) {
+      return { ok: false, reason: 'bad-signature' };
     }
+    let tx: OidcTx;
+    try {
+      tx = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as OidcTx;
+    } catch {
+      return { ok: false, reason: 'malformed' };
+    }
+    if (!tx.state || !tx.verifier) return { ok: false, reason: 'incomplete' };
+    if (tx.exp < Date.now()) return { ok: false, reason: 'expired' };
+    return { ok: true, tx };
+  }
+
+  function readTxCookie(value: string): OidcTx | null {
+    const seen = inspectTxCookie(value);
+    return seen.ok ? seen.tx : null;
   }
 
   function buildAuthTransaction(loginHint?: string): { url: string; cookie: string } {
@@ -124,8 +171,11 @@ export function createOidcRp(config: OidcRpConfig): OidcRp {
     params: URLSearchParams,
     txCookie: string | undefined,
   ): Promise<string> {
-    const tx = txCookie ? readTxCookie(txCookie) : null;
-    if (!tx) throw new OidcError('login transaction missing or expired');
+    const seen = inspectTxCookie(txCookie);
+    if (!seen.ok) {
+      throw new OidcError(`login transaction unusable: ${seen.reason}`, seen.reason);
+    }
+    const tx = seen.tx;
     const state = params.get('state');
     const code = params.get('code');
     if (!state || !code || state !== tx.state) throw new OidcError('state mismatch');

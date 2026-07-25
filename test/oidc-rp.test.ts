@@ -121,3 +121,71 @@ test('buildEndSessionUrl lets an explicit return target win over the default', (
   const url = new URL(rp.buildEndSessionUrl({ postLogoutRedirectUri: 'https://app.example/bye' }));
   assert.equal(url.searchParams.get('post_logout_redirect_uri'), 'https://app.example/bye');
 });
+
+// Every cause used to collapse into one message, which made a live incident
+// undiagnosable: "missing or expired" cannot tell a cookie the browser never
+// sent from one signed with the wrong secret.
+test('completeAuthTransaction reports WHY the tx cookie was unusable', async () => {
+  const rp = createOidcRp(config);
+  const params = new URLSearchParams({ state: 's', code: 'c' });
+  const reasonOf = async (cookie: string | undefined) => {
+    try {
+      await rp.completeAuthTransaction(params, cookie);
+      return 'no-error';
+    } catch (err) {
+      assert.ok(err instanceof OidcError);
+      return (err as OidcError & { reason?: string }).reason;
+    }
+  };
+
+  assert.equal(await reasonOf(undefined), 'absent');
+  assert.equal(await reasonOf(''), 'absent');
+  assert.equal(await reasonOf('not-a-cookie'), 'malformed');
+
+  const good = rp.createTxCookie({ state: 's1', nonce: 'n1', verifier: 'v1' });
+  const [payload] = good.split('.');
+  assert.equal(await reasonOf(`${payload}.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`), 'bad-signature');
+
+  // Foreign secret = same shape, different signature.
+  const other = createOidcRp({ ...config, sessionSecret: 'other-secret' });
+  assert.equal(await reasonOf(other.createTxCookie({ state: 's', nonce: 'n', verifier: 'v' })), 'bad-signature');
+});
+
+// `expired` and `incomplete` are the two reasons a live incident is most likely
+// to show, so they must be distinguishable too. Forging them means re-signing a
+// payload the way the SDK does (HMAC-SHA256 over the raw JSON, base64url).
+test('completeAuthTransaction distinguishes expired from incomplete', async () => {
+  const { createHmac } = await import('node:crypto');
+  const forge = (payloadObj: unknown) => {
+    // The SDK signs the base64url payload, not the raw JSON (createTxCookie).
+    const payload = Buffer.from(JSON.stringify(payloadObj)).toString('base64url');
+    const sig = createHmac('sha256', config.sessionSecret).update(payload).digest('base64url');
+    return `${payload}.${sig}`;
+  };
+  const rp = createOidcRp(config);
+  const params = new URLSearchParams({ state: 's', code: 'c' });
+  const reasonOf = async (cookie: string) => {
+    try {
+      await rp.completeAuthTransaction(params, cookie);
+      return 'no-error';
+    } catch (err) {
+      return (err as OidcError & { reason?: string }).reason;
+    }
+  };
+
+  assert.equal(
+    await reasonOf(forge({ state: 's', nonce: 'n', verifier: 'v', exp: Date.now() - 1000 })),
+    'expired',
+  );
+  assert.equal(
+    await reasonOf(forge({ state: 's', nonce: 'n', exp: Date.now() + 60_000 })),
+    'incomplete',
+  );
+});
+
+test('readTxCookie keeps its null contract while inspection reports reasons', () => {
+  const rp = createOidcRp(config);
+  assert.equal(rp.readTxCookie('not-a-cookie'), null);
+  const tx = rp.readTxCookie(rp.createTxCookie({ state: 's', nonce: 'n', verifier: 'v' }));
+  assert.equal(tx?.state, 's');
+});
