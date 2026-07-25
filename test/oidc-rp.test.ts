@@ -91,3 +91,20 @@ test('buildAuthTransaction injects openid when the caller omits it', () => {
 test('buildAuthTransaction ignores an empty scopes array (defaults to openid)', () => {
   assert.equal(scopeOf(createOidcRp({ ...config, scopes: [] })), 'openid');
 });
+
+test('buildEndSessionUrl points at the issuer end_session endpoint with client_id', () => {
+  const rp = createOidcRp(config);
+  const url = new URL(rp.buildEndSessionUrl());
+  assert.equal(url.origin + url.pathname, 'https://id.tessera.at/session/end');
+  assert.equal(url.searchParams.get('client_id'), config.clientId);
+  assert.equal(url.searchParams.get('post_logout_redirect_uri'), null);
+});
+
+test('buildEndSessionUrl carries post_logout_redirect_uri and state when given', () => {
+  const rp = createOidcRp(config);
+  const url = new URL(
+    rp.buildEndSessionUrl({ postLogoutRedirectUri: 'https://app.example/', state: 'st1' }),
+  );
+  assert.equal(url.searchParams.get('post_logout_redirect_uri'), 'https://app.example/');
+  assert.equal(url.searchParams.get('state'), 'st1');
+});

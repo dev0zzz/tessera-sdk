@@ -53,6 +53,17 @@ export interface OidcRp {
   ): Promise<string>;
   createTxCookie(tx: Omit<OidcTx, 'exp'>): string;
   readTxCookie(value: string): OidcTx | null;
+  /**
+   * URL that ends the Tessera session (OIDC RP-initiated logout). Send the user
+   * here AFTER clearing your own session — otherwise the issuer session lives on
+   * and the next login is waved through without asking for the passkey.
+   *
+   * `client_id` identifies the client, so no `id_token_hint` (and no storing of
+   * raw ID tokens) is needed. `postLogoutRedirectUri` must be registered with
+   * the issuer; an unregistered one is silently ignored and the user stays on
+   * Tessera's "signed out" page.
+   */
+  buildEndSessionUrl(opts?: { postLogoutRedirectUri?: string; state?: string }): string;
 }
 
 export function createOidcRp(config: OidcRpConfig): OidcRp {
@@ -154,5 +165,19 @@ export function createOidcRp(config: OidcRpConfig): OidcRp {
     return claims.sub;
   }
 
-  return { buildAuthTransaction, completeAuthTransaction, createTxCookie, readTxCookie };
+  function buildEndSessionUrl(opts?: { postLogoutRedirectUri?: string; state?: string }): string {
+    const params = new URLSearchParams({ client_id: config.clientId });
+    if (opts?.postLogoutRedirectUri)
+      params.set('post_logout_redirect_uri', opts.postLogoutRedirectUri);
+    if (opts?.state) params.set('state', opts.state);
+    return `${issuer}/session/end?${params}`;
+  }
+
+  return {
+    buildAuthTransaction,
+    completeAuthTransaction,
+    createTxCookie,
+    readTxCookie,
+    buildEndSessionUrl,
+  };
 }
