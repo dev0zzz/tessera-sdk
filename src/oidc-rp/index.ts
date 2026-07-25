@@ -59,9 +59,12 @@ export interface OidcRp {
    * and the next login is waved through without asking for the passkey.
    *
    * `client_id` identifies the client, so no `id_token_hint` (and no storing of
-   * raw ID tokens) is needed. `postLogoutRedirectUri` must be registered with
-   * the issuer; an unregistered one is silently ignored and the user stays on
-   * Tessera's "signed out" page.
+   * raw ID tokens) is needed.
+   *
+   * The user is returned to your app's own origin by default (derived from
+   * `redirectUri`) — no configuration needed. Pass `postLogoutRedirectUri` only
+   * to land somewhere more specific; it must then be registered with the issuer,
+   * otherwise it is ignored and the user stays on Tessera's "signed out" page.
    */
   buildEndSessionUrl(opts?: { postLogoutRedirectUri?: string; state?: string }): string;
 }
@@ -167,8 +170,20 @@ export function createOidcRp(config: OidcRpConfig): OidcRp {
 
   function buildEndSessionUrl(opts?: { postLogoutRedirectUri?: string; state?: string }): string {
     const params = new URLSearchParams({ client_id: config.clientId });
-    if (opts?.postLogoutRedirectUri)
-      params.set('post_logout_redirect_uri', opts.postLogoutRedirectUri);
+    // Default the return target to the app's own origin, derived from the
+    // registered redirect URI. That makes "logout brings me back" the standard
+    // behaviour for every app without a line of extra config — and it is an
+    // address the app already controls (it receives the authorization code
+    // there), so it adds no redirect surface. A malformed redirectUri simply
+    // yields no default rather than throwing.
+    let derived: string | undefined;
+    try {
+      derived = new URL(config.redirectUri).origin;
+    } catch {
+      derived = undefined;
+    }
+    const target = opts?.postLogoutRedirectUri ?? derived;
+    if (target) params.set('post_logout_redirect_uri', target);
     if (opts?.state) params.set('state', opts.state);
     return `${issuer}/session/end?${params}`;
   }

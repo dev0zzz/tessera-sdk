@@ -97,7 +97,6 @@ test('buildEndSessionUrl points at the issuer end_session endpoint with client_i
   const url = new URL(rp.buildEndSessionUrl());
   assert.equal(url.origin + url.pathname, 'https://id.tessera.at/session/end');
   assert.equal(url.searchParams.get('client_id'), config.clientId);
-  assert.equal(url.searchParams.get('post_logout_redirect_uri'), null);
 });
 
 test('buildEndSessionUrl carries post_logout_redirect_uri and state when given', () => {
@@ -107,4 +106,18 @@ test('buildEndSessionUrl carries post_logout_redirect_uri and state when given',
   );
   assert.equal(url.searchParams.get('post_logout_redirect_uri'), 'https://app.example/');
   assert.equal(url.searchParams.get('state'), 'st1');
+});
+
+test('buildEndSessionUrl defaults the return target to the redirectUri origin', () => {
+  // Every RP registers a redirect URI; its origin is a target the app already
+  // controls, so "logout returns you home" needs zero extra configuration.
+  const rp = createOidcRp(config);
+  const url = new URL(rp.buildEndSessionUrl());
+  assert.equal(url.searchParams.get('post_logout_redirect_uri'), 'https://app.example');
+});
+
+test('buildEndSessionUrl lets an explicit return target win over the default', () => {
+  const rp = createOidcRp(config);
+  const url = new URL(rp.buildEndSessionUrl({ postLogoutRedirectUri: 'https://app.example/bye' }));
+  assert.equal(url.searchParams.get('post_logout_redirect_uri'), 'https://app.example/bye');
 });
