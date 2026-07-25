@@ -1,0 +1,13 @@
+# gitleaks findings that are known-safe and deliberately committed.
+#
+# The EUDI test vectors are self-generated SD-JWT VC presentations for the
+# synthetic issuer `issuer.example`, signed by a throwaway key that was never
+# committed. Their claims are only present as SHA-256 digests in `_sd`, and the
+# embedded confirmation JWK carries the public `x`/`y` coordinates only — no
+# `d`. gitleaks' generic `jwt` rule flags them on entropy alone.
+#
+# Fingerprints are commit-scoped: adding a new fixture (or rewriting these
+# commits) needs a new line here. Regenerate with
+#   gitleaks detect --log-opts="--all" --report-format json --report-path -
+19de6ca09ce6d8437418a088fc8df38a463443f3:test/fixtures/eudi/valid-presentation.txt:jwt:1
+19de6ca09ce6d8437418a088fc8df38a463443f3:test/fixtures/eudi/tampered-signature.txt:jwt:1
