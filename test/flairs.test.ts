@@ -142,3 +142,70 @@ test("listWornFlairs drops a badge whose def is gone and keeps verified ones", a
     { issuer: ISSUER, def: DEF, name: "Skytess-Pilot", policy: "open" },
   ]);
 });
+
+test("getDef returns null on a literal HTTP 404", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([{ match: "flair.def", status: 404 }]),
+  });
+  assert.equal(await flairs.getDef(ISSUER, DEF), null);
+});
+
+test("listWornFlairs includes a granted flair only while the grant stands", async () => {
+  const badgeList = {
+    match: "listRecords",
+    body: {
+      records: [
+        {
+          uri: `at://${WEARER}/at.tessera.flair.badge/${ISSUER}:${DEF}`,
+          value: { issuer: ISSUER, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+        },
+      ],
+    },
+  };
+  const withGrant = createFlairs({
+    fetch: fakeFetch([badgeList, defRoute("granted"), grantRoute]),
+  });
+  assert.deepEqual(await withGrant.listWornFlairs(WEARER), [
+    { issuer: ISSUER, def: DEF, name: "Skytess-Pilot", policy: "granted" },
+  ]);
+  const withoutGrant = createFlairs({
+    fetch: fakeFetch([
+      badgeList,
+      defRoute("granted"),
+      { match: "flair.grant", ...NOT_FOUND },
+    ]),
+  });
+  assert.deepEqual(await withoutGrant.listWornFlairs(WEARER), []);
+});
+
+test("listWornFlairs drops a badge whose key disagrees with its fields", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([
+      {
+        match: "listRecords",
+        body: {
+          records: [
+            {
+              // TID rkey instead of the canonical "<issuer>:<def>" — the
+              // lexicon calls this invalid, and verifyWear would say false.
+              uri: `at://${WEARER}/at.tessera.flair.badge/3jui7kd54zh2y`,
+              value: { issuer: ISSUER, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+            },
+          ],
+        },
+      },
+      defRoute("open"),
+    ]),
+  });
+  assert.deepEqual(await flairs.listWornFlairs(WEARER), []);
+});
+
+test("verifyWear stays false for a badge stored under a non-canonical key", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([
+      defRoute("open"),
+      { match: "flair.badge", ...NOT_FOUND },
+    ]),
+  });
+  assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), false);
+});

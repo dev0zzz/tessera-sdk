@@ -222,6 +222,12 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
     for (const r of recs) {
       const v = r.value;
       if (typeof v.issuer !== "string" || typeof v.def !== "string") continue;
+      // The lexicon's key rule is part of the record's validity: a badge MUST
+      // sit at "<issuer>:<def>", and a record whose key and fields disagree is
+      // invalid, not a wear. Enforcing it here keeps this reader and verifyWear
+      // (which reads exactly that key) answering the same question the same way.
+      const rkey = r.uri.split("/").pop() ?? "";
+      if (rkey !== `${v.issuer}:${v.def}`) continue;
       // One entry per (issuer, def): the PDS does not enforce the lexicon's key
       // rule for foreign lexicons, so any client can write duplicates under TID
       // rkeys — mirroring the dedupe in orgs' consumers.
