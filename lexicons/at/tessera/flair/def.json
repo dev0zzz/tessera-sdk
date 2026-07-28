@@ -1,0 +1,30 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.flair.def",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A flair definition — a badge any account (person, org, agent) may issue. Lives in the ISSUER's repo; the record key is a lowercase slug ([a-z0-9-], max 64) chosen at creation and referenced by grants and badges. The issuer's account is the counterpart of every wear: policy 'open' is a standing consent (anyone may wear it), policy 'granted' requires a matching at.tessera.flair.grant per wearer.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["name", "policy", "createdAt"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 64 },
+          "description": { "type": "string", "maxLength": 256 },
+          "policy": {
+            "type": "string",
+            "enum": ["open", "granted"],
+            "description": "open = this definition itself authorizes anyone to wear the flair; granted = only wearers with a matching at.tessera.flair.grant in this repo. Consumers MUST fail closed on any other value."
+          },
+          "criteria": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "Human-readable rules for earning this flair. Enforced by the issuer (who writes the grants), never by the protocol — the grant is the proof the rules were met."
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

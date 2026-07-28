@@ -1,0 +1,24 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.flair.grant",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "The authoritative half of a granted flair: this repo's owner (the issuer) grants the flair `def` to `subject`. The record key MUST be '<def>:<subject>' so a verification is a single getRecord; a mismatch between key and fields makes the record invalid, not a grant.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["def", "subject", "createdAt"],
+        "properties": {
+          "def": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Record key of the at.tessera.flair.def in this same repo."
+          },
+          "subject": { "type": "string", "format": "did" },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}
