@@ -4,7 +4,7 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "Binds this account's DID to a Radicle node identity (NID). linkSig is an SSH-format Ed25519 signature by the Radicle key over 'at.tessera.radicle.link.v1:<did>', proving control of the NID. Shown in the profile alongside the DID. Single record at rkey 'self'.",
+      "description": "Binds this account's DID to a Radicle node identity (NID). linkSig is an armored SSH (SSHSIG) Ed25519 signature by the Radicle key over 'at.tessera.radicle.link.v1:<did>', proving control of the NID. Shown in the profile alongside the DID. Single record at rkey 'self'.",
       "key": "literal:self",
       "record": {
         "type": "object",
@@ -13,7 +13,7 @@
           "nid": {
             "type": "string",
             "maxLength": 64,
-            "description": "Radicle node id (z-base32-encoded Ed25519 public key)."
+            "description": "Radicle node id (multibase base58btc of the Ed25519 public key (did:key style))."
           },
           "linkSig": {
             "type": "string",
