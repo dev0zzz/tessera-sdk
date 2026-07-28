@@ -1,5 +1,5 @@
 /**
- * tessera-sdk/core — isomorphic helpers for talking to the Tessera PDS.
+ * @tesseraat/sdk/core — isomorphic helpers for talking to the Tessera PDS.
  * Extracted verbatim from salzgrotte/mbdrone's `src/lib/tessera.ts` (which
  * were byte-identical copies); the PDS URL is now overridable via
  * TESSERA_PDS_URL instead of being hardcoded per app.

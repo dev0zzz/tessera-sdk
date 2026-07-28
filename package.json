@@ -1,5 +1,5 @@
 {
-  "name": "tessera-sdk",
+  "name": "@tesseraat/sdk",
   "version": "0.8.0",
   "description": "Shared integration layer for Tessera apps: OIDC relying-party (id.tessera.at) and PDS helpers",
   "license": "MIT",
@@ -49,8 +49,8 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsc -b",
-    "prepare": "npm run build",
-    "test": "node --test test/*.test.ts"
+    "test": "node --test test/*.test.ts",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@atproto/api": "^0.20.28",
@@ -83,5 +83,9 @@
   },
   "dependencies": {
     "@sd-jwt/sd-jwt-vc": "0.20.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

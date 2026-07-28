@@ -1,5 +1,5 @@
 /**
- * tessera-sdk/zaps — the zap button any Tessera app can embed in minutes.
+ * @tesseraat/sdk/zaps — the zap button any Tessera app can embed in minutes.
  *
  * A zap is a small public USDC payment between Tessera users. The host app
  * needs ZERO auth or wallet integration: everything (session, recipient
@@ -8,7 +8,7 @@
  * speaks the `tessera-zap/1` postMessage protocol and returns the receipt.
  *
  * Browser-only. Framework stories:
- *  - Vite/vanilla: `import 'tessera-sdk/zaps'` + `<tessera-zap-button …>`
+ *  - Vite/vanilla: `import '@tesseraat/sdk/zaps'` + `<tessera-zap-button …>`
  *  - React/Next:   dynamically import inside a client component, same element
  *  - Astro/static: a module <script> that imports this package
  */

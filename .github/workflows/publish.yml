@@ -1,0 +1,57 @@
+name: Publish to npm
+
+# Ein Tag-Push veröffentlicht. Bewusst nicht bei jedem main-Commit: eine
+# Veröffentlichung ist unwiderruflich (npm erlaubt kein erneutes Publizieren
+# derselben Version), also braucht sie eine ausdrückliche Handlung.
+on:
+  push:
+    tags:
+      - 'v*'
+
+# KEIN NPM_TOKEN. Die Authentisierung läuft über OIDC gegen npm ("Trusted
+# Publishing"): GitHub bestätigt npm direkt, dass dieser Workflow in diesem Repo
+# läuft, und npm gleicht das mit dem hinterlegten Trusted Publisher ab. Es gibt
+# damit kein langlebiges Geheimnis, das aus einem Log fallen, in einer
+# kompromittierten Action landen oder ablaufen kann.
+#
+# Das ist nicht nur die sicherere, sondern bald die einzige Variante: npm
+# beschränkt Tokens, die 2FA umgehen — Konto-Änderungen ab August 2026, direktes
+# Publizieren ab Januar 2027.
+#
+# `id-token: write` ist die Erlaubnis, sich ein OIDC-Token ausstellen zu lassen;
+# `contents: read` genügt sonst, dieser Workflow schreibt nichts ins Repo.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          # Node 24: die Version, für die npm OIDC-Publishing dokumentiert.
+          # Nicht an die Runtime der Konsumenten gebunden — hier wird nur gebaut
+          # und veröffentlicht, `engines` verlangt >=20.
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          # In einem Release-Build nie aus dem Cache: ein vergifteter oder
+          # veralteter Cache-Eintrag landete sonst unbemerkt im Tarball.
+          package-manager-cache: false
+
+      - run: npm ci
+
+      # Baut dist/ und läuft damit vor dem Publizieren — dasselbe tut
+      # `prepublishOnly` noch einmal, absichtlich doppelt: scheitert der Build
+      # hier, bricht der Job, bevor irgendetwas Richtung Registry geht.
+      - run: npm run build
+
+      - run: npm test
+
+      # Kein `--provenance`, kein `--access public` auf der Kommandozeile: beides
+      # steht in `publishConfig` der package.json, damit ein Publish von Hand
+      # dieselben Eigenschaften hat wie einer von hier. Zwei Wahrheiten über die
+      # Sichtbarkeit eines Pakets sind eine zu viel.
+      - run: npm publish
