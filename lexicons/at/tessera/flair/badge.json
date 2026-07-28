@@ -12,6 +12,11 @@
         "properties": {
           "issuer": { "type": "string", "format": "did" },
           "def": { "type": "string", "maxLength": 64 },
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "The def's name at the time of consent. When present, consumers MUST treat a mismatch with the def's current name as not-a-wear (fail closed): a renamed flair is a new statement the wearer has not agreed to. Absent on badges written before this field existed — those verify against the live name."
+          },
           "createdAt": { "type": "string", "format": "datetime" }
         }
       }
