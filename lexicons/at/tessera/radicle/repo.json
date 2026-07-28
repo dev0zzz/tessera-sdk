@@ -1,0 +1,45 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.radicle.repo",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Announces a Radicle repository owned (or co-maintained) by this account. rkey: the repo id without the 'rad:' prefix. Social surfaces render these; the seed watcher derives its seeding allowlist from them; zaps may reference them via at-uri.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["rid", "name", "createdAt"],
+        "properties": {
+          "rid": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Radicle repo id (rad:z...)."
+          },
+          "name": { "type": "string", "maxLength": 100 },
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "maxGraphemes": 300
+          },
+          "seed": {
+            "type": "string",
+            "format": "uri",
+            "description": "Preferred radicle-httpd base URL for browsing/cloning, e.g. https://seed.tessera.at."
+          },
+          "defaultBranch": { "type": "string", "maxLength": 100 },
+          "builtBy": {
+            "type": "string",
+            "format": "did",
+            "description": "Agent DID that produced this repo, if agent-built. Anchor of the verified-human-backed chain: owner -> delegation -> agent -> repo. Account-asserted until delegation attestations exist."
+          },
+          "commissionedBy": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Optional: the post/zap/task record that commissioned the build."
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}
