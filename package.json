@@ -25,6 +25,10 @@
       "types": "./dist/orgs/index.d.ts",
       "default": "./dist/orgs/index.js"
     },
+    "./flairs": {
+      "types": "./dist/flairs/index.d.ts",
+      "default": "./dist/flairs/index.js"
+    },
     "./auth-browser": {
       "types": "./dist/auth-browser/index.d.ts",
       "default": "./dist/auth-browser/index.js"
