@@ -37,6 +37,12 @@ const badgeRoute = {
   match: `collection=at.tessera.flair.badge&rkey=`,
   body: { value: { issuer: ISSUER, def: DEF, createdAt: "2026-01-01T00:00:00Z" } },
 };
+const badgeRouteWithName = (name: string) => ({
+  match: `collection=at.tessera.flair.badge&rkey=`,
+  body: {
+    value: { issuer: ISSUER, def: DEF, name, createdAt: "2026-01-01T00:00:00Z" },
+  },
+});
 
 test("getDef returns null when the record does not exist", async () => {
   const flairs = createFlairs({
@@ -71,6 +77,27 @@ test("verifyWear: open def + badge = true", async () => {
     fetch: fakeFetch([defRoute("open"), badgeRoute]),
   });
   assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), true);
+});
+
+test("verifyWear: legacy badge without a name field still verifies against the live name (pre-binding)", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([defRoute("open"), badgeRoute]),
+  });
+  assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), true);
+});
+
+test("verifyWear: badge name matches the def's current name = true", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([defRoute("open"), badgeRouteWithName("Skytess-Pilot")]),
+  });
+  assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), true);
+});
+
+test("verifyWear: badge name mismatches the def's current (renamed) name = false", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([defRoute("open"), badgeRouteWithName("Altname")]),
+  });
+  assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), false);
 });
 
 test("verifyWear: open def without badge = false", async () => {
@@ -208,4 +235,29 @@ test("verifyWear stays false for a badge stored under a non-canonical key", asyn
     ]),
   });
   assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), false);
+});
+
+test("listWornFlairs drops a badge whose stored name mismatches the def's current (renamed) name", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([
+      {
+        match: "listRecords",
+        body: {
+          records: [
+            {
+              uri: `at://${WEARER}/at.tessera.flair.badge/${ISSUER}:${DEF}`,
+              value: {
+                issuer: ISSUER,
+                def: DEF,
+                name: "Altname",
+                createdAt: "2026-01-01T00:00:00Z",
+              },
+            },
+          ],
+        },
+      },
+      defRoute("open"),
+    ]),
+  });
+  assert.deepEqual(await flairs.listWornFlairs(WEARER), []);
 });

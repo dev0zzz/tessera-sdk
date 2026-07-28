@@ -211,6 +211,12 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
       `${issuerDid}:${defRkey}`,
     );
     if (!badge) return false;
+    // The name the wearer agreed to. A def renamed after consent is a new
+    // statement — when the badge carries a name and it no longer matches,
+    // this is not a wear (fail closed). Badges from before the field existed
+    // carry none and verify against the live name.
+    const agreedName = badge.value.name;
+    if (typeof agreedName === "string" && agreedName !== def.name) return false;
     if (def.policy === "open") return true;
     return verifyGrant(issuerDid, defRkey, wearerDid);
   }
@@ -236,6 +242,10 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
       seen.add(key);
       const def = await getDef(v.issuer, v.def);
       if (!def) continue;
+      // Same fail-closed rule as verifyWear: a badge naming the def it was
+      // consented to must match the def's current name, or a rename has
+      // turned it into an unagreed-to statement.
+      if (typeof v.name === "string" && v.name !== def.name) continue;
       if (
         def.policy === "granted" &&
         !(await verifyGrant(v.issuer, v.def, wearerDid))
