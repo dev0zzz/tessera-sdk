@@ -50,8 +50,13 @@ jobs:
 
       - run: npm test
 
-      # Kein `--provenance`, kein `--access public` auf der Kommandozeile: beides
-      # steht in `publishConfig` der package.json, damit ein Publish von Hand
-      # dieselben Eigenschaften hat wie einer von hier. Zwei Wahrheiten über die
-      # Sichtbarkeit eines Pakets sind eine zu viel.
-      - run: npm publish
+      # `--provenance` NUR hier und nicht in `publishConfig`: der Nachweis wird
+      # aus der OIDC-Identität dieses Workflows gebildet, es gibt ihn also
+      # ausserhalb einer unterstützten CI nicht. Stünde er in der package.json,
+      # scheiterte jeder Publish von Hand daran — einschliesslich des ersten, der
+      # von Hand kommen MUSS, weil npm den Trusted Publisher in den
+      # Paket-Einstellungen erwartet und das Paket dafür existieren muss.
+      #
+      # `--access public` steht dagegen in `publishConfig`, weil es überall gilt:
+      # ein neuer Scope wäre sonst standardmässig privat.
+      - run: npm publish --provenance

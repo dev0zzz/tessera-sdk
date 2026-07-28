@@ -85,7 +85,6 @@
     "@sd-jwt/sd-jwt-vc": "0.20.0"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   }
 }
