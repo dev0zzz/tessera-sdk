@@ -15,10 +15,10 @@ package's devDependencies, network access and an SSH key, and failing the
 consumer's install whenever any of it was missing. A published tarball ships
 `dist/` prebuilt: installing is a download.
 
-It also restores what a version range is for. Three apps pinned tags —
-`tessera-web` and `tessera-oidc` at v0.7.0, `ledger` at v0.5.0 — while this package
-was already at v0.8.0. A tag is not a range, so nothing had any reason to tell them
-so; it took reading three package.json files side by side to notice.
+It also restores what a version range is for. Three apps pinned tags, and a tag is
+not a range: nothing could tell them a newer release existed. `tessera-web` and
+`tessera-oidc` sat at v0.7.0 while this package was at v0.8.0 — one release behind,
+silently.
 
 Releases run from a tag push via `.github/workflows/publish.yml`, authenticated by
 OIDC ("trusted publishing"). There is no `NPM_TOKEN` anywhere: npm verifies with
