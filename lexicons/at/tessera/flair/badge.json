@@ -1,0 +1,20 @@
+{
+  "lexicon": 1,
+  "id": "at.tessera.flair.badge",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "The consenting half, in the WEARER's own repo: 'I wear the flair `def` issued by `issuer`.' The record key MUST be '<issuer>:<def>' (one badge per flair, idempotent writes). Self-asserted — display requires the def to exist and, for policy 'granted', a matching at.tessera.flair.grant in the issuer's repo. Never render a wear nobody's counterpart confirms. A record whose key and fields disagree is invalid, not a wear. DIDs containing characters outside the record-key charset (e.g. percent-encoded did:web forms) cannot be represented in this key and thus cannot be referenced by a badge.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["issuer", "def", "createdAt"],
+        "properties": {
+          "issuer": { "type": "string", "format": "did" },
+          "def": { "type": "string", "maxLength": 64 },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}
