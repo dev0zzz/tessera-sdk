@@ -5,9 +5,9 @@ import {
 } from '@atproto/oauth-client-browser';
 
 /**
- * tessera-sdk/auth-browser — direct atproto OAuth for BROWSER apps that
+ * @tesseraat/sdk/auth-browser — direct atproto OAuth for BROWSER apps that
  * read/write the user's repo as the user (the "needs an Agent" side of the
- * decision rule; identity-only apps use tessera-sdk/oidc-rp instead).
+ * decision rule; identity-only apps use @tesseraat/sdk/oidc-rp instead).
  * Extracted from skytess's src/game/auth.ts.
  *
  * Peer dependencies: @atproto/api, @atproto/oauth-client-browser.
@@ -85,7 +85,7 @@ export function createBrowserAuth(config: BrowserAuthConfig): BrowserAuth {
       const { data } = await agent.com.atproto.repo.describeRepo({ repo: session.sub });
       return { did: session.sub, handle: data.handle };
     } catch (err) {
-      console.warn('[tessera-sdk/auth] could not resolve handle for', session.sub, err);
+      console.warn('[@tesseraat/sdk/auth] could not resolve handle for', session.sub, err);
       return { did: session.sub, handle: session.sub };
     }
   }
@@ -98,7 +98,7 @@ export function createBrowserAuth(config: BrowserAuthConfig): BrowserAuth {
         if (!result) return null;
         return await toAuthState(result.session);
       } catch (err) {
-        console.warn('[tessera-sdk/auth] initAuth failed', err);
+        console.warn('[@tesseraat/sdk/auth] initAuth failed', err);
         return null;
       }
     },
@@ -115,7 +115,7 @@ export function createBrowserAuth(config: BrowserAuthConfig): BrowserAuth {
         agent = null;
         if (sub) await client.revoke(sub);
       } catch (err) {
-        console.warn('[tessera-sdk/auth] signOut failed', err);
+        console.warn('[@tesseraat/sdk/auth] signOut failed', err);
       }
     },
 

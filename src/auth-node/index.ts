@@ -8,11 +8,11 @@ import {
 import Database from 'better-sqlite3';
 
 /**
- * tessera-sdk/auth-node — direct atproto OAuth for NODE (server-side) apps
+ * @tesseraat/sdk/auth-node — direct atproto OAuth for NODE (server-side) apps
  * that read/write the user's repo as the user. Extracted from the
  * previously-triplicated NodeOAuthClient wiring in tessera-web / scrollpass
  * (SQLite state+session stores on a persistent volume, in-process refresh
- * lock). Identity-only apps use tessera-sdk/oidc-rp instead.
+ * lock). Identity-only apps use @tesseraat/sdk/oidc-rp instead.
  *
  * Peer dependencies: @atproto/oauth-client-node, better-sqlite3.
  */

@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 /**
- * tessera-sdk/oidc-rp — minimal OIDC relying-party client for id.tessera.at
+ * @tesseraat/sdk/oidc-rp — minimal OIDC relying-party client for id.tessera.at
  * (authorization code + PKCE, client_secret_post). Extracted verbatim from
  * salzgrotte/mbdrone's byte-identical `src/lib/oidc.ts`; the app-specific
  * `getEnv()` coupling is replaced by an explicit config object.

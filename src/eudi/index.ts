@@ -1,5 +1,5 @@
 /**
- * tessera-sdk/eudi — verify a state-signed OpenID4VP presentation (SD-JWT VC)
+ * @tesseraat/sdk/eudi — verify a state-signed OpenID4VP presentation (SD-JWT VC)
  * against an EU trust list and return the selectively-disclosed claims.
  *
  * Pure & stateless. Node-only. Peer/crypto dep: @sd-jwt/sd-jwt-vc (via ./sdjwt.js).

@@ -1,5 +1,5 @@
 /**
- * tessera-sdk/orgs — read-only consumer client for Tessera org membership.
+ * @tesseraat/sdk/orgs — read-only consumer client for Tessera org membership.
  * Fetch-only (no @atproto/api), isomorphic. Verifies the authoritative
  * attestation in the org's repo (never the self-asserted membership in the
  * member's repo) and derives display badges from the member's memberships.

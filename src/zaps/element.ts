@@ -9,7 +9,7 @@ import {
  * Browser-only entry: importing this module registers the
  * <tessera-zap-button> custom element. Do NOT import during SSR — in React
  * frameworks import it inside a client component effect:
- *   useEffect(() => { void import('tessera-sdk/zaps/element') }, [])
+ *   useEffect(() => { void import('@tesseraat/sdk/zaps/element') }, [])
  */
 
 void DEFAULT_ZAP_URL; // re-exported below for element consumers

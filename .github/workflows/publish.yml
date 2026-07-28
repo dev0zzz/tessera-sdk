@@ -1,0 +1,62 @@
+name: Publish to npm
+
+# Ein Tag-Push veröffentlicht. Bewusst nicht bei jedem main-Commit: eine
+# Veröffentlichung ist unwiderruflich (npm erlaubt kein erneutes Publizieren
+# derselben Version), also braucht sie eine ausdrückliche Handlung.
+on:
+  push:
+    tags:
+      - 'v*'
+
+# KEIN NPM_TOKEN. Die Authentisierung läuft über OIDC gegen npm ("Trusted
+# Publishing"): GitHub bestätigt npm direkt, dass dieser Workflow in diesem Repo
+# läuft, und npm gleicht das mit dem hinterlegten Trusted Publisher ab. Es gibt
+# damit kein langlebiges Geheimnis, das aus einem Log fallen, in einer
+# kompromittierten Action landen oder ablaufen kann.
+#
+# Das ist nicht nur die sicherere, sondern bald die einzige Variante: npm
+# beschränkt Tokens, die 2FA umgehen — Konto-Änderungen ab August 2026, direktes
+# Publizieren ab Januar 2027.
+#
+# `id-token: write` ist die Erlaubnis, sich ein OIDC-Token ausstellen zu lassen;
+# `contents: read` genügt sonst, dieser Workflow schreibt nichts ins Repo.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          # Node 24: die Version, für die npm OIDC-Publishing dokumentiert.
+          # Nicht an die Runtime der Konsumenten gebunden — hier wird nur gebaut
+          # und veröffentlicht, `engines` verlangt >=20.
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          # In einem Release-Build nie aus dem Cache: ein vergifteter oder
+          # veralteter Cache-Eintrag landete sonst unbemerkt im Tarball.
+          package-manager-cache: false
+
+      - run: npm ci
+
+      # Baut dist/ und läuft damit vor dem Publizieren — dasselbe tut
+      # `prepublishOnly` noch einmal, absichtlich doppelt: scheitert der Build
+      # hier, bricht der Job, bevor irgendetwas Richtung Registry geht.
+      - run: npm run build
+
+      - run: npm test
+
+      # `--provenance` NUR hier und nicht in `publishConfig`: der Nachweis wird
+      # aus der OIDC-Identität dieses Workflows gebildet, es gibt ihn also
+      # ausserhalb einer unterstützten CI nicht. Stünde er in der package.json,
+      # scheiterte jeder Publish von Hand daran — einschliesslich des ersten, der
+      # von Hand kommen MUSS, weil npm den Trusted Publisher in den
+      # Paket-Einstellungen erwartet und das Paket dafür existieren muss.
+      #
+      # `--access public` steht dagegen in `publishConfig`, weil es überall gilt:
+      # ein neuer Scope wäre sonst standardmässig privat.
+      - run: npm publish --provenance
