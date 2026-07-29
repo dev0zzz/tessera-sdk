@@ -22,6 +22,29 @@
             "maxLength": 512,
             "description": "Human-readable rules for earning this flair. Enforced by the issuer (who writes the grants), never by the protocol — the grant is the proof the rules were met."
           },
+          "style": {
+            "type": "object",
+            "description": "Curated presentation of the badge. All values are open sets the clients curate; consumers MUST fall back to their defaults on unknown values. Presentation only — deliberately NOT consent-bound (unlike name): a restyle within the curated sets is a logo update, not a new statement.",
+            "properties": {
+              "shape": {
+                "type": "string",
+                "maxLength": 32,
+                "knownValues": ["mark", "seal", "band"],
+                "description": "Chip geometry, in the Tessera chamfer language."
+              },
+              "tone": {
+                "type": "string",
+                "maxLength": 32,
+                "knownValues": ["gold", "spade", "heart", "diamond", "club"],
+                "description": "Edge and tint family: gold (default) or one of the four equal-lightness suit accents."
+              },
+              "icon": {
+                "type": "string",
+                "maxLength": 32,
+                "description": "Icon name from the client's curated set; unknown names render no icon."
+              }
+            }
+          },
           "createdAt": { "type": "string", "format": "datetime" }
         }
       }

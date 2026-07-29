@@ -32,6 +32,12 @@ export interface FlairsConfig {
 
 export type FlairPolicy = "open" | "granted";
 
+export interface FlairStyle {
+  shape?: string;
+  tone?: string;
+  icon?: string;
+}
+
 export interface FlairDef {
   issuer: string;
   rkey: string;
@@ -39,6 +45,7 @@ export interface FlairDef {
   description?: string;
   policy: FlairPolicy;
   criteria?: string;
+  style?: FlairStyle;
   createdAt: string;
 }
 
@@ -47,6 +54,7 @@ export interface WornFlair {
   def: string;
   name: string;
   policy: FlairPolicy;
+  style?: FlairStyle;
 }
 
 /**
@@ -148,6 +156,19 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
   ): FlairDef | null {
     if (typeof v.name !== "string" || v.name.length === 0) return null;
     if (v.policy !== "open" && v.policy !== "granted") return null;
+    // style is presentation-only and not consent-bound (unlike name): extract
+    // whatever string fields are present, uncapped and unvalidated. Values
+    // outside the curated sets are the CONSUMER's fallback problem, per the
+    // lexicon — not something to reject here.
+    let style: FlairStyle | undefined;
+    if (v.style && typeof v.style === "object" && !Array.isArray(v.style)) {
+      const s = v.style as Record<string, unknown>;
+      const extracted: FlairStyle = {};
+      if (typeof s.shape === "string") extracted.shape = s.shape;
+      if (typeof s.tone === "string") extracted.tone = s.tone;
+      if (typeof s.icon === "string") extracted.icon = s.icon;
+      if (Object.keys(extracted).length > 0) style = extracted;
+    }
     return {
       issuer,
       rkey,
@@ -157,6 +178,7 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
         ? { description: v.description }
         : {}),
       ...(typeof v.criteria === "string" ? { criteria: v.criteria } : {}),
+      ...(style ? { style } : {}),
       createdAt: typeof v.createdAt === "string" ? v.createdAt : "",
     };
   }
@@ -257,6 +279,7 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
         def: v.def,
         name: def.name,
         policy: def.policy,
+        ...(def.style ? { style: def.style } : {}),
       });
     }
     return out;

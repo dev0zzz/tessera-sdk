@@ -65,6 +65,46 @@ test("getDef fails closed on an unknown policy", async () => {
   assert.equal(await flairs.getDef(ISSUER, DEF), null);
 });
 
+test("getDef parses a curated style", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([
+      {
+        match: `collection=at.tessera.flair.def`,
+        body: {
+          value: {
+            name: "Skytess-Pilot",
+            policy: "open",
+            style: { shape: "seal", tone: "heart", icon: "trophy" },
+            createdAt: "2026-01-01T00:00:00Z",
+          },
+        },
+      },
+    ]),
+  });
+  const def = await flairs.getDef(ISSUER, DEF);
+  assert.deepEqual(def?.style, { shape: "seal", tone: "heart", icon: "trophy" });
+});
+
+test("getDef tolerates garbage style, keeping only the string fields", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([
+      {
+        match: `collection=at.tessera.flair.def`,
+        body: {
+          value: {
+            name: "Skytess-Pilot",
+            policy: "open",
+            style: { shape: 7, tone: null, icon: "star" },
+            createdAt: "2026-01-01T00:00:00Z",
+          },
+        },
+      },
+    ]),
+  });
+  const def = await flairs.getDef(ISSUER, DEF);
+  assert.deepEqual(def?.style, { icon: "star" });
+});
+
 test("getDef throws FlairsPdsError when the PDS is unreachable", async () => {
   const flairs = createFlairs({
     fetch: fakeFetch([{ match: "flair.def", throw: true }]),
@@ -203,6 +243,41 @@ test("listWornFlairs includes a granted flair only while the grant stands", asyn
     ]),
   });
   assert.deepEqual(await withoutGrant.listWornFlairs(WEARER), []);
+});
+
+test("listWornFlairs carries the def's style on the returned WornFlair", async () => {
+  const badgeList = {
+    match: "listRecords",
+    body: {
+      records: [
+        {
+          uri: `at://${WEARER}/at.tessera.flair.badge/${ISSUER}:${DEF}`,
+          value: { issuer: ISSUER, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+        },
+      ],
+    },
+  };
+  const styledDefRoute = {
+    match: `collection=at.tessera.flair.def`,
+    body: {
+      value: {
+        name: "Skytess-Pilot",
+        policy: "open",
+        style: { shape: "band", tone: "spade", icon: "wing" },
+        createdAt: "2026-01-01T00:00:00Z",
+      },
+    },
+  };
+  const flairs = createFlairs({ fetch: fakeFetch([badgeList, styledDefRoute]) });
+  assert.deepEqual(await flairs.listWornFlairs(WEARER), [
+    {
+      issuer: ISSUER,
+      def: DEF,
+      name: "Skytess-Pilot",
+      policy: "open",
+      style: { shape: "band", tone: "spade", icon: "wing" },
+    },
+  ]);
 });
 
 test("listWornFlairs drops a badge whose key disagrees with its fields", async () => {
