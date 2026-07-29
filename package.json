@@ -25,6 +25,14 @@
       "types": "./dist/orgs/index.d.ts",
       "default": "./dist/orgs/index.js"
     },
+    "./radicle": {
+      "types": "./dist/radicle/index.d.ts",
+      "default": "./dist/radicle/index.js"
+    },
+    "./radicle/unlock": {
+      "types": "./dist/radicle/unlock.d.ts",
+      "default": "./dist/radicle/unlock.js"
+    },
     "./flairs": {
       "types": "./dist/flairs/index.d.ts",
       "default": "./dist/flairs/index.js"
@@ -86,6 +94,8 @@
     }
   },
   "dependencies": {
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
     "@sd-jwt/sd-jwt-vc": "0.20.0"
   },
   "publishConfig": {
