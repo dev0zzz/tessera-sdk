@@ -29,6 +29,10 @@
       "types": "./dist/radicle/index.d.ts",
       "default": "./dist/radicle/index.js"
     },
+    "./radicle/unlock": {
+      "types": "./dist/radicle/unlock.d.ts",
+      "default": "./dist/radicle/unlock.js"
+    },
     "./flairs": {
       "types": "./dist/flairs/index.d.ts",
       "default": "./dist/flairs/index.js"
