@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { ed25519 } from "@noble/curves/ed25519";
 import {
   RADICLE_LINK_NAMESPACE,
+  createDeviceIdentity,
   deriveKeystorePassphrase,
   isValidNid,
   isValidRid,
@@ -17,6 +18,7 @@ import {
   signLinkMessage,
   toOpenSshPrivateKey,
   toOpenSshPublicKey,
+  verifiedDevices,
   verifyLinkSig,
 } from "../dist/radicle/index.js";
 
@@ -204,4 +206,42 @@ test("the keystore passphrase is derived, deterministic and unstealable", async 
   );
   const asText = Buffer.from(vaultKey).toString("base64url");
   assert.notEqual(a, asText, "keystore passphrase and vault key must differ");
+});
+
+test("a device vouches for itself, and only for its own DID", () => {
+  const { seed, device } = createDeviceIdentity({ did: DID, name: "laptop" });
+  assert.equal(device.nid, nidFromPublicKey(publicKeyFromSeed(seed)));
+  assert.equal(device.name, "laptop");
+
+  // The whole point: the entry is verifiable by anyone, and the seed stays put.
+  assert.deepEqual(verifiedDevices(DID, [device]).map((d) => d.nid), [device.nid]);
+  assert.deepEqual(
+    verifiedDevices("did:plc:someoneelse", [device]),
+    [],
+    "a device signed for one account must not count for another",
+  );
+});
+
+test("unverified device entries are dropped, not displayed", () => {
+  const a = createDeviceIdentity({ did: DID, name: "laptop" }).device;
+  const b = createDeviceIdentity({ did: DID, name: "desktop" }).device;
+
+  // Claiming someone else's NID with your own signature must not work.
+  const stolen = { ...b, nid: a.nid, name: "impostor" };
+  const kept = verifiedDevices(DID, [b, stolen]).map((d) => d.name);
+  assert.deepEqual(kept, ["desktop"], "a NID cannot be claimed with a foreign signature");
+
+  // A duplicate of a real entry cannot shadow or double-count it.
+  assert.equal(verifiedDevices(DID, [a, { ...a, name: "shadow" }]).length, 1);
+
+  // Junk shapes never reach the caller.
+  assert.deepEqual(verifiedDevices(DID, [null, {}, { nid: a.nid }, "x"]), []);
+  assert.deepEqual(verifiedDevices(DID, undefined), []);
+});
+
+test("an existing local key can be adopted without regenerating it", () => {
+  const seed = new Uint8Array(32).fill(3);
+  const { device } = createDeviceIdentity({ did: DID, name: "workstation", seed });
+  assert.equal(device.nid, nidFromPublicKey(publicKeyFromSeed(seed)));
+  assert.ok(verifiedDevices(DID, [device]).length === 1);
 });

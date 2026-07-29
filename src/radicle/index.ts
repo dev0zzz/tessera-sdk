@@ -334,6 +334,81 @@ export function toOpenSshPublicKey(seed: Uint8Array, comment = "radicle"): strin
   return `ssh-ed25519 ${toBase64(blob)} ${comment}\n`;
 }
 
+export type RadicleDevice = {
+  nid: string;
+  linkSig: string;
+  name: string;
+  addedAt: string;
+};
+
+/**
+ * Mints a node identity for THIS machine and the proof that it belongs to a
+ * DID. The seed is returned to the caller to write locally and never travels:
+ * what goes to the account is `device`, which is entirely public.
+ *
+ * This is the shape that makes "I never hand over my secrets" literally true —
+ * there is no secret to hand over, only a claim and a signature over it.
+ */
+export function createDeviceIdentity(options: {
+  did: string;
+  name: string;
+  /** supply a seed to adopt an existing local key instead of minting one */
+  seed?: Uint8Array;
+  now?: Date;
+}): { seed: Uint8Array; device: RadicleDevice } {
+  const seed = options.seed ?? ed25519.utils.randomPrivateKey();
+  const nid = nidFromPublicKey(ed25519.getPublicKey(seed));
+  return {
+    seed,
+    device: {
+      nid,
+      linkSig: signLinkMessage(seed, options.did),
+      name: options.name.slice(0, 64),
+      addedAt: (options.now ?? new Date()).toISOString(),
+    },
+  };
+}
+
+/**
+ * Filters a device list down to the entries whose signature actually proves
+ * the claim, for THIS did. Anything unproven is dropped rather than shown —
+ * the record is writable by the account owner through any client, so an
+ * unverified entry is a claim, not a binding.
+ *
+ * Duplicate NIDs collapse to the first verified occurrence, so a second entry
+ * cannot shadow or double-count a device.
+ */
+export function verifiedDevices(
+  did: string,
+  devices: readonly unknown[] | undefined,
+): RadicleDevice[] {
+  const out: RadicleDevice[] = [];
+  const seen = new Set<string>();
+  for (const raw of devices ?? []) {
+    const d = raw as Partial<RadicleDevice> | null;
+    if (
+      !d ||
+      typeof d.nid !== "string" ||
+      typeof d.linkSig !== "string" ||
+      typeof d.name !== "string"
+    ) {
+      continue;
+    }
+    if (seen.has(d.nid)) continue;
+    const pubkey = nidToEd25519(d.nid);
+    if (!pubkey) continue;
+    if (!verifyLinkSig(d.linkSig, radicleLinkMessage(did), pubkey)) continue;
+    seen.add(d.nid);
+    out.push({
+      nid: d.nid,
+      linkSig: d.linkSig,
+      name: d.name.slice(0, 64),
+      addedAt: typeof d.addedAt === "string" ? d.addedAt : "",
+    });
+  }
+  return out;
+}
+
 /**
  * Derives the passphrase that protects the on-disk keystore from the passkey's
  * PRF secret. Returns base64url of 32 bytes — long enough that the keystore's
