@@ -4,29 +4,57 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "Binds this account's DID to a Radicle node identity (NID). linkSig is an armored SSH (SSHSIG) Ed25519 signature by the Radicle key over 'at.tessera.radicle.link.v1:<did>', proving control of the NID. Shown in the profile alongside the DID. Single record at rkey 'self'.",
+      "description": "The Radicle node identities this account vouches for. Each device holds its own key and never transports it; the account merely states 'this node is mine', proven by an SSHSIG that the device's own key makes over 'at.tessera.radicle.link.v1:<did>'. Losing a device therefore costs one entry, not a re-key. Top-level nid/linkSig are the OPTIONAL account-held identity (the passkey-vaulted one, which belongs to no machine); `devices` are machine-local keys. Either may be absent. Single record at rkey 'self'.",
       "key": "literal:self",
       "record": {
         "type": "object",
-        "required": ["nid", "linkSig", "createdAt"],
+        "required": ["createdAt"],
         "properties": {
           "nid": {
             "type": "string",
             "maxLength": 64,
-            "description": "Radicle node id (multibase base58btc of the Ed25519 public key (did:key style))."
+            "description": "Optional account-held node id — the passkey-vaulted identity, tied to no machine. Radicle node id (multibase base58btc of the Ed25519 public key, did:key style)."
           },
           "linkSig": {
             "type": "string",
             "maxLength": 1024,
-            "description": "SSH signature (ssh-keygen -Y sign, namespace 'at.tessera.radicle') by the Radicle key over at.tessera.radicle.link.v1:<did>."
+            "description": "SSH signature (ssh-keygen -Y sign, namespace 'at.tessera.radicle') by the account-held key over at.tessera.radicle.link.v1:<did>. Required whenever `nid` is present."
           },
           "alias": {
             "type": "string",
             "maxLength": 64,
-            "description": "Optional Radicle node alias."
+            "description": "Optional Radicle node alias for the account-held identity."
+          },
+          "devices": {
+            "type": "array",
+            "maxLength": 32,
+            "description": "Machine-local node identities. Each entry is vouched for by its own signature; removing one revokes that machine without touching any other.",
+            "items": { "type": "ref", "ref": "#device" }
           },
           "createdAt": { "type": "string", "format": "datetime" }
         }
+      }
+    },
+    "device": {
+      "type": "object",
+      "required": ["nid", "linkSig", "name", "addedAt"],
+      "properties": {
+        "nid": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Radicle node id of the key that lives on this machine and never leaves it."
+        },
+        "linkSig": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "SSH signature by THIS device's key over at.tessera.radicle.link.v1:<did>. Made on the machine, which is why no secret has to travel for the account to vouch for it."
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Human label chosen by the owner, e.g. 'laptop'. Display only."
+        },
+        "addedAt": { "type": "string", "format": "datetime" }
       }
     }
   }
