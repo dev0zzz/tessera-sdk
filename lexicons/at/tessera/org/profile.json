@@ -23,6 +23,10 @@
             "description": "curated = an admin attests each member; open = the org attests anyone who asks."
           },
           "description": { "type": "string", "maxLength": 256 },
+          "discoverable": {
+            "type": "boolean",
+            "description": "Opt-in to the public directory. Absent or false = the org is NOT listed anywhere and only reachable by handle/DID — the default, because nobody ever consented to standing in a directory. Directory listings MUST require this to be exactly true. Marking an org-shaped account as an organisation in search results is independent of this flag: being an org is itself a public record."
+          },
           "createdAt": { "type": "string", "format": "datetime" }
         }
       }
