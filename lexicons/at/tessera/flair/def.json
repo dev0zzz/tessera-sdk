@@ -29,7 +29,7 @@
               "shape": {
                 "type": "string",
                 "maxLength": 32,
-                "knownValues": ["mark", "seal", "band"],
+                "knownValues": ["mark", "seal", "crest", "lozenge", "band"],
                 "description": "Chip geometry, in the Tessera chamfer language."
               },
               "tone": {
@@ -44,6 +44,12 @@
                 "description": "Icon name from the client's curated set; unknown names render no icon."
               }
             }
+          },
+          "image": {
+            "type": "blob",
+            "accept": ["image/png", "image/jpeg", "image/webp"],
+            "maxSize": 1000000,
+            "description": "The badge artwork — the medallion's face. Free content on wearers' profiles, therefore consent-bound like name: consumers MUST treat any mismatch between this blob's CID and the wearer's badge.image (including one-sided absence) as not-a-wear."
           },
           "createdAt": { "type": "string", "format": "datetime" }
         }

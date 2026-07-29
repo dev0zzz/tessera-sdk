@@ -17,6 +17,11 @@
             "maxLength": 64,
             "description": "The def's name at the time of consent. When present, consumers MUST treat a mismatch with the def's current name as not-a-wear (fail closed): a renamed flair is a new statement the wearer has not agreed to. Absent on badges written before this field existed — those verify against the live name."
           },
+          "image": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "CID of the def's image blob at the time of consent. The binding is exact on image-or-absence: a badge without this field only verifies against a def without an image, and vice versa a stored CID must equal the def's current blob CID — anything else is not a wear (fail closed)."
+          },
           "createdAt": { "type": "string", "format": "datetime" }
         }
       }
