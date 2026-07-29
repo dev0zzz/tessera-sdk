@@ -43,6 +43,24 @@ const badgeRouteWithName = (name: string) => ({
     value: { issuer: ISSUER, def: DEF, name, createdAt: "2026-01-01T00:00:00Z" },
   },
 });
+const IMAGE_CID = "bafyimagecid123";
+const defRouteWithImage = (cid: string) => ({
+  match: `collection=at.tessera.flair.def`,
+  body: {
+    value: {
+      name: "Skytess-Pilot",
+      policy: "open",
+      image: { $type: "blob", ref: { $link: cid }, mimeType: "image/png", size: 1234 },
+      createdAt: "2026-01-01T00:00:00Z",
+    },
+  },
+});
+const badgeRouteWithImage = (cid: string) => ({
+  match: `collection=at.tessera.flair.badge&rkey=`,
+  body: {
+    value: { issuer: ISSUER, def: DEF, image: cid, createdAt: "2026-01-01T00:00:00Z" },
+  },
+});
 
 test("getDef returns null when the record does not exist", async () => {
   const flairs = createFlairs({
@@ -335,4 +353,78 @@ test("listWornFlairs drops a badge whose stored name mismatches the def's curren
     ]),
   });
   assert.deepEqual(await flairs.listWornFlairs(WEARER), []);
+});
+
+test("verifyWear: def image CID matches badge.image = true", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([defRouteWithImage(IMAGE_CID), badgeRouteWithImage(IMAGE_CID)]),
+  });
+  assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), true);
+});
+
+test("verifyWear: def image CID differs from badge.image = false", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([defRouteWithImage(IMAGE_CID), badgeRouteWithImage("bafyother999")]),
+  });
+  assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), false);
+});
+
+test("verifyWear: def has an image but the badge has no image field = false", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([defRouteWithImage(IMAGE_CID), badgeRoute]),
+  });
+  assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), false);
+});
+
+test("verifyWear: badge carries an image but the def has none = false", async () => {
+  const flairs = createFlairs({
+    fetch: fakeFetch([defRoute("open"), badgeRouteWithImage(IMAGE_CID)]),
+  });
+  assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), false);
+});
+
+test("listWornFlairs carries imageCid and drops a mismatched-image badge", async () => {
+  const matchingBadgeList = {
+    match: "listRecords",
+    body: {
+      records: [
+        {
+          uri: `at://${WEARER}/at.tessera.flair.badge/${ISSUER}:${DEF}`,
+          value: {
+            issuer: ISSUER,
+            def: DEF,
+            image: IMAGE_CID,
+            createdAt: "2026-01-01T00:00:00Z",
+          },
+        },
+      ],
+    },
+  };
+  const matching = createFlairs({
+    fetch: fakeFetch([matchingBadgeList, defRouteWithImage(IMAGE_CID)]),
+  });
+  assert.deepEqual(await matching.listWornFlairs(WEARER), [
+    { issuer: ISSUER, def: DEF, name: "Skytess-Pilot", policy: "open", imageCid: IMAGE_CID },
+  ]);
+
+  const mismatchedBadgeList = {
+    match: "listRecords",
+    body: {
+      records: [
+        {
+          uri: `at://${WEARER}/at.tessera.flair.badge/${ISSUER}:${DEF}`,
+          value: {
+            issuer: ISSUER,
+            def: DEF,
+            image: "bafyother999",
+            createdAt: "2026-01-01T00:00:00Z",
+          },
+        },
+      ],
+    },
+  };
+  const mismatched = createFlairs({
+    fetch: fakeFetch([mismatchedBadgeList, defRouteWithImage(IMAGE_CID)]),
+  });
+  assert.deepEqual(await mismatched.listWornFlairs(WEARER), []);
 });

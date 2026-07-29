@@ -46,6 +46,7 @@ export interface FlairDef {
   policy: FlairPolicy;
   criteria?: string;
   style?: FlairStyle;
+  imageCid?: string;
   createdAt: string;
 }
 
@@ -55,6 +56,7 @@ export interface WornFlair {
   name: string;
   policy: FlairPolicy;
   style?: FlairStyle;
+  imageCid?: string;
 }
 
 /**
@@ -169,6 +171,20 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
       if (typeof s.icon === "string") extracted.icon = s.icon;
       if (Object.keys(extracted).length > 0) style = extracted;
     }
+    // image is a blob ref; the JSON shape varies by transport. getRecord
+    // normally serializes it as { ref: { $link }, ... } but some paths
+    // (legacy writes, raw CBOR->JSON) surface the CID directly as { cid }.
+    // Tolerate missing/malformed as absent — never throw on a bad image field.
+    let imageCid: string | undefined;
+    if (v.image && typeof v.image === "object" && !Array.isArray(v.image)) {
+      const img = v.image as Record<string, unknown>;
+      const ref = img.ref;
+      if (ref && typeof ref === "object" && !Array.isArray(ref)) {
+        const link = (ref as Record<string, unknown>).$link;
+        if (typeof link === "string") imageCid = link;
+      }
+      if (!imageCid && typeof img.cid === "string") imageCid = img.cid;
+    }
     return {
       issuer,
       rkey,
@@ -179,6 +195,7 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
         : {}),
       ...(typeof v.criteria === "string" ? { criteria: v.criteria } : {}),
       ...(style ? { style } : {}),
+      ...(imageCid ? { imageCid } : {}),
       createdAt: typeof v.createdAt === "string" ? v.createdAt : "",
     };
   }
@@ -239,6 +256,11 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
     // carry none and verify against the live name.
     const agreedName = badge.value.name;
     if (typeof agreedName === "string" && agreedName !== def.name) return false;
+    // Bild-Bindung: exakt auf Bild-oder-Abwesenheit. Ein getauschtes, neu
+    // hinzugefügtes oder entferntes Artwork ist eine neue Aussage, der niemand
+    // zugestimmt hat — fail closed, wie beim Namen.
+    const agreedImage = typeof badge.value.image === "string" ? badge.value.image : null;
+    if ((def.imageCid ?? null) !== agreedImage) return false;
     if (def.policy === "open") return true;
     return verifyGrant(issuerDid, defRkey, wearerDid);
   }
@@ -268,6 +290,11 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
       // consented to must match the def's current name, or a rename has
       // turned it into an unagreed-to statement.
       if (typeof v.name === "string" && v.name !== def.name) continue;
+      // Bild-Bindung: exakt auf Bild-oder-Abwesenheit. Ein getauschtes, neu
+      // hinzugefügtes oder entferntes Artwork ist eine neue Aussage, der niemand
+      // zugestimmt hat — fail closed, wie beim Namen.
+      const agreedImage = typeof v.image === "string" ? v.image : null;
+      if ((def.imageCid ?? null) !== agreedImage) continue;
       if (
         def.policy === "granted" &&
         !(await verifyGrant(v.issuer, v.def, wearerDid))
@@ -280,6 +307,7 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
         name: def.name,
         policy: def.policy,
         ...(def.style ? { style: def.style } : {}),
+        ...(def.imageCid ? { imageCid: def.imageCid } : {}),
       });
     }
     return out;
