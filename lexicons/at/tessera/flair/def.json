@@ -23,27 +23,9 @@
             "description": "Human-readable rules for earning this flair. Enforced by the issuer (who writes the grants), never by the protocol — the grant is the proof the rules were met."
           },
           "style": {
-            "type": "object",
-            "description": "Curated presentation of the badge. All values are open sets the clients curate; consumers MUST fall back to their defaults on unknown values. Presentation only — deliberately NOT consent-bound (unlike name): a restyle within the curated sets is a logo update, not a new statement.",
-            "properties": {
-              "shape": {
-                "type": "string",
-                "maxLength": 32,
-                "knownValues": ["mark", "seal", "crest", "lozenge", "band"],
-                "description": "Chip geometry, in the Tessera chamfer language."
-              },
-              "tone": {
-                "type": "string",
-                "maxLength": 32,
-                "knownValues": ["gold", "spade", "heart", "diamond", "club"],
-                "description": "Edge and tint family: gold (default) or one of the four equal-lightness suit accents."
-              },
-              "icon": {
-                "type": "string",
-                "maxLength": 32,
-                "description": "Icon name from the client's curated set; unknown names render no icon."
-              }
-            }
+            "type": "ref",
+            "ref": "#style",
+            "description": "Curated presentation of the badge — see #style. A ref rather than an inline object: the PDS fork's lexicon compiler only accepts objects as defs, and inline would keep these records forever unvalidatable server-side."
           },
           "image": {
             "type": "blob",
@@ -52,6 +34,41 @@
             "description": "The badge artwork — the medallion's face. Free content on wearers' profiles, therefore consent-bound like name: consumers MUST treat any mismatch between this blob's CID and the wearer's badge.image (including one-sided absence) as not-a-wear."
           },
           "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "style": {
+      "type": "object",
+      "description": "Curated presentation of the badge. All values are open sets the clients curate; consumers MUST fall back to their defaults on unknown values. Presentation only — deliberately NOT consent-bound (unlike name): a restyle within the curated sets is a logo update, not a new statement.",
+      "properties": {
+        "shape": {
+          "type": "string",
+          "maxLength": 32,
+          "knownValues": [
+            "mark",
+            "seal",
+            "crest",
+            "lozenge",
+            "hex",
+            "pennant",
+            "star",
+            "burst",
+            "arch",
+            "tag",
+            "band"
+          ],
+          "description": "Medallion geometry, in the Tessera chamfer language. band is legacy and renders as mark."
+        },
+        "tone": {
+          "type": "string",
+          "maxLength": 32,
+          "knownValues": ["gold", "spade", "heart", "diamond", "club"],
+          "description": "Edge and tint family: gold (default) or one of the four equal-lightness suit accents."
+        },
+        "icon": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Icon name from the client's curated set; unknown names render no icon."
         }
       }
     }
