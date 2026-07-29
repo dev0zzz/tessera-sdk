@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { ed25519 } from "@noble/curves/ed25519";
 import {
   RADICLE_LINK_NAMESPACE,
+  deriveKeystorePassphrase,
   isValidNid,
   isValidRid,
   nidFromPublicKey,
@@ -176,4 +177,31 @@ test("the key file we write round-trips through a real signing tool", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("the keystore passphrase is derived, deterministic and unstealable", async () => {
+  const secret = new Uint8Array(32).fill(7).buffer;
+  const a = await deriveKeystorePassphrase(secret);
+  const b = await deriveKeystorePassphrase(secret);
+  assert.equal(a, b, "same passkey secret must always yield the same passphrase");
+  assert.match(a, /^[A-Za-z0-9_-]+$/, "must survive an argv/env round trip");
+  assert.ok(a.length >= 40, "32 bytes of entropy, so the keystore KDF is not the weak link");
+
+  const other = await deriveKeystorePassphrase(new Uint8Array(32).fill(8).buffer);
+  assert.notEqual(a, other, "a different passkey must not open the same keystore");
+
+  // The keystore passphrase must NOT be usable as the vault key and vice
+  // versa — that separation is why one leaking does not imply the other.
+  const vaultKey = await crypto.subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: new Uint8Array(32),
+      info: new TextEncoder().encode("at.tessera.radicle.enc.v1"),
+    },
+    await crypto.subtle.importKey("raw", secret, "HKDF", false, ["deriveBits"]),
+    256,
+  );
+  const asText = Buffer.from(vaultKey).toString("base64url");
+  assert.notEqual(a, asText, "keystore passphrase and vault key must differ");
 });

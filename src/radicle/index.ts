@@ -34,6 +34,16 @@ import { utf8ToBytes } from "@noble/hashes/utils";
 export const RADICLE_PRF_SALT_LABEL = "at.tessera.radicle.prf.v1";
 /** HKDF info label for the AES-GCM key that wraps the seed. */
 export const RADICLE_HKDF_INFO_LABEL = "at.tessera.radicle.enc.v1";
+/**
+ * HKDF info label for the passphrase that encrypts the ON-DISK keystore.
+ *
+ * A separate label so the disk passphrase can never decrypt the vault
+ * ciphertext, and vice versa. Deriving it from the passkey rather than asking
+ * for one is the point: there is then no passphrase to store, remember or
+ * steal — the key file is inert without a passkey ceremony, which is the
+ * whole security property this buys.
+ */
+export const RADICLE_KEYSTORE_INFO_LABEL = "at.tessera.radicle.keystore.v1";
 export const RADICLE_LINK_NAMESPACE = "at.tessera.radicle";
 
 export const RADICLE_KEY_COLLECTION = "at.tessera.radicle.key";
@@ -322,6 +332,37 @@ export function toOpenSshPublicKey(seed: Uint8Array, comment = "radicle"): strin
   const publicKey = ed25519.getPublicKey(seed);
   const blob = concat(sshString(SSH_ED25519), sshString(publicKey));
   return `ssh-ed25519 ${toBase64(blob)} ${comment}\n`;
+}
+
+/**
+ * Derives the passphrase that protects the on-disk keystore from the passkey's
+ * PRF secret. Returns base64url of 32 bytes — long enough that the keystore's
+ * own KDF is not the weak link, and printable so it can be handed to
+ * `ssh-keygen`/`RAD_PASSPHRASE`.
+ *
+ * Same input as the vault key, different HKDF label, so the two are
+ * independent. Callers must never persist the result.
+ */
+export async function deriveKeystorePassphrase(
+  prfSecret: ArrayBuffer,
+): Promise<string> {
+  const hkdfKey = await crypto.subtle.importKey("raw", prfSecret, "HKDF", false, [
+    "deriveBits",
+  ]);
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: new Uint8Array(32),
+      info: utf8ToBytes(RADICLE_KEYSTORE_INFO_LABEL) as BufferSource,
+    },
+    hkdfKey,
+    256,
+  );
+  return toBase64(new Uint8Array(bits))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 /** Public key of a seed, for callers that only need the NID. */
