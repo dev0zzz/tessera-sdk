@@ -507,3 +507,19 @@ function armor(blob: Uint8Array, label: string): string {
   const lines = toBase64(blob).match(/.{1,70}/g) ?? [];
   return [`-----BEGIN ${label}-----`, ...lines, `-----END ${label}-----`, ""].join("\n");
 }
+
+// Encryption for private repos lives in its own file — it is a distinct
+// concern from node identity, and keeping it separate means a caller who only
+// needs NIDs does not pull in the crypto path.
+export {
+  deriveEncryptionKeypair,
+  newRepoKey,
+  sealTo,
+  openSealed,
+  encryptContent,
+  decryptContent,
+  encryptCobText,
+  decryptCobText,
+  isEncryptedCobText,
+  type EncryptionKeypair,
+} from "./encryption.js";

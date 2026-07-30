@@ -8,12 +8,14 @@
       "key": "literal:self",
       "record": {
         "type": "object",
-        "required": ["createdAt"],
+        "required": [
+          "createdAt"
+        ],
         "properties": {
           "nid": {
             "type": "string",
             "maxLength": 64,
-            "description": "Optional account-held node id — the passkey-vaulted identity, tied to no machine. Radicle node id (multibase base58btc of the Ed25519 public key, did:key style)."
+            "description": "Optional account-held node id \u2014 the passkey-vaulted identity, tied to no machine. Radicle node id (multibase base58btc of the Ed25519 public key, did:key style)."
           },
           "linkSig": {
             "type": "string",
@@ -29,15 +31,26 @@
             "type": "array",
             "maxLength": 32,
             "description": "Machine-local node identities. Each entry is vouched for by its own signature; removing one revokes that machine without touching any other.",
-            "items": { "type": "ref", "ref": "#device" }
+            "items": {
+              "type": "ref",
+              "ref": "#device"
+            }
           },
-          "createdAt": { "type": "string", "format": "datetime" }
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
         }
       }
     },
     "device": {
       "type": "object",
-      "required": ["nid", "linkSig", "name", "addedAt"],
+      "required": [
+        "nid",
+        "linkSig",
+        "name",
+        "addedAt"
+      ],
       "properties": {
         "nid": {
           "type": "string",
@@ -54,7 +67,15 @@
           "maxLength": 64,
           "description": "Human label chosen by the owner, e.g. 'laptop'. Display only."
         },
-        "addedAt": { "type": "string", "format": "datetime" }
+        "addedAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "encPubkey": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Optional X25519 public key of this machine, base64url, for encrypting a private repository's key to it. HKDF-derived from the same Radicle key the NID encodes (label at.tessera.radicle.enc.x25519.v1) \u2014 derived rather than converted, so one key is never used for both signing and encryption, and so there is no second secret to back up. Absent on devices that predate encryption support."
+        }
       }
     }
   }
