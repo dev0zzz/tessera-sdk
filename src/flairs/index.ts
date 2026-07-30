@@ -23,6 +23,21 @@ const FLAIR_DEF = "at.tessera.flair.def";
 const FLAIR_GRANT = "at.tessera.flair.grant";
 const FLAIR_BADGE = "at.tessera.flair.badge";
 
+/**
+ * How many worn-badge pairs a single `listWornFlairs` call will ever verify.
+ *
+ * Badge records are written by whoever owns the repo — anyone can write an
+ * at.tessera.flair.badge record for any (issuer, def) pair into their own
+ * account, so the count is not ours to bound. Without a cap, a caller reading
+ * a stranger's repo would fan out as far as that repo's badge list says,
+ * against every issuer it names. Same value as tessera-web's own
+ * MAX_WORN_CHECKS (lib/flair-server.ts) — that reader was built specifically
+ * because this one, pre-fix, had no cap; the two now agree on the ceiling.
+ * Above the cap, the excess badges are simply not shown — fail closed, never
+ * pass through unverified.
+ */
+const MAX_WORN_CHECKS = 30;
+
 export interface FlairsConfig {
   /** PDS base URL, no trailing slash. Default: core's TESSERA_PDS. */
   pdsUrl?: string;
@@ -80,7 +95,12 @@ export interface Flairs {
     issuerDid: string,
     defRkey: string,
   ): Promise<boolean>;
-  listWornFlairs(wearerDid: string): Promise<WornFlair[]>;
+  /**
+   * @param limit Cap on how many deduped badge pairs to verify, ≤ MAX_WORN_CHECKS
+   *   (30). Callers may ask for fewer; asking for more is clamped down to 30,
+   *   never raised.
+   */
+  listWornFlairs(wearerDid: string, limit?: number): Promise<WornFlair[]>;
 }
 
 export function createFlairs(config: FlairsConfig = {}): Flairs {
@@ -265,10 +285,14 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
     return verifyGrant(issuerDid, defRkey, wearerDid);
   }
 
-  async function listWornFlairs(wearerDid: string): Promise<WornFlair[]> {
+  async function listWornFlairs(
+    wearerDid: string,
+    limit?: number,
+  ): Promise<WornFlair[]> {
     const recs = await listRecords(wearerDid, FLAIR_BADGE);
-    const out: WornFlair[] = [];
     const seen = new Set<string>();
+    const pairs: Array<{ issuer: string; def: string; name?: string; image?: string }> =
+      [];
     for (const r of recs) {
       const v = r.value;
       if (typeof v.issuer !== "string" || typeof v.def !== "string") continue;
@@ -284,31 +308,64 @@ export function createFlairs(config: FlairsConfig = {}): Flairs {
       const key = `${v.issuer}\n${v.def}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      const def = await getDef(v.issuer, v.def);
-      if (!def) continue;
-      // Same fail-closed rule as verifyWear: a badge naming the def it was
-      // consented to must match the def's current name, or a rename has
-      // turned it into an unagreed-to statement.
-      if (typeof v.name === "string" && v.name !== def.name) continue;
-      // Bild-Bindung: exakt auf Bild-oder-Abwesenheit. Ein getauschtes, neu
-      // hinzugefügtes oder entferntes Artwork ist eine neue Aussage, der niemand
-      // zugestimmt hat — fail closed, wie beim Namen.
-      const agreedImage = typeof v.image === "string" ? v.image : null;
-      if ((def.imageCid ?? null) !== agreedImage) continue;
-      if (
-        def.policy === "granted" &&
-        !(await verifyGrant(v.issuer, v.def, wearerDid))
-      ) {
-        continue;
-      }
-      out.push({
+      pairs.push({
         issuer: v.issuer,
         def: v.def,
-        name: def.name,
-        policy: def.policy,
-        ...(def.style ? { style: def.style } : {}),
-        ...(def.imageCid ? { imageCid: def.imageCid } : {}),
+        ...(typeof v.name === "string" ? { name: v.name } : {}),
+        ...(typeof v.image === "string" ? { image: v.image } : {}),
       });
+    }
+
+    // Capped AFTER dedup, and only ever down from MAX_WORN_CHECKS — a caller
+    // asking for more than the ceiling gets the ceiling, never the uncapped
+    // list. Pairs beyond the cap are simply not checked, not shown.
+    const cap = Math.min(limit ?? MAX_WORN_CHECKS, MAX_WORN_CHECKS);
+    const checked = pairs.slice(0, Math.max(0, cap));
+
+    // Verified in parallel: sequential per-pair reads let a wearer with many
+    // badges force a consumer to fan out for as long as that repo's badge
+    // list is deep. A rejected leg (network error, PDS 5xx) drops just that
+    // pair — fail-closed, same as a definitive "not verified" — and never
+    // aborts the others.
+    const settled = await Promise.allSettled(
+      checked.map(
+        async ({
+          issuer,
+          def: defRkey,
+          name: agreedName,
+          image: agreedImage,
+        }): Promise<WornFlair | null> => {
+          const def = await getDef(issuer, defRkey);
+          if (!def) return null;
+          // Same fail-closed rule as verifyWear: a badge naming the def it was
+          // consented to must match the def's current name, or a rename has
+          // turned it into an unagreed-to statement.
+          if (agreedName !== undefined && agreedName !== def.name) return null;
+          // Bild-Bindung: exakt auf Bild-oder-Abwesenheit. Ein getauschtes, neu
+          // hinzugefügtes oder entferntes Artwork ist eine neue Aussage, der
+          // niemand zugestimmt hat — fail closed, wie beim Namen.
+          if ((def.imageCid ?? null) !== (agreedImage ?? null)) return null;
+          if (
+            def.policy === "granted" &&
+            !(await verifyGrant(issuer, defRkey, wearerDid))
+          ) {
+            return null;
+          }
+          return {
+            issuer,
+            def: defRkey,
+            name: def.name,
+            policy: def.policy,
+            ...(def.style ? { style: def.style } : {}),
+            ...(def.imageCid ? { imageCid: def.imageCid } : {}),
+          };
+        },
+      ),
+    );
+
+    const out: WornFlair[] = [];
+    for (const r of settled) {
+      if (r.status === "fulfilled" && r.value) out.push(r.value);
     }
     return out;
   }

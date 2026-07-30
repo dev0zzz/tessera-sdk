@@ -383,6 +383,162 @@ test("verifyWear: badge carries an image but the def has none = false", async ()
   assert.equal(await flairs.verifyWear(WEARER, ISSUER, DEF), false);
 });
 
+test("listWornFlairs caps verification at MAX_WORN_CHECKS (30 of 31 badges checked)", async () => {
+  const N = 31;
+  const records = Array.from({ length: N }, (_, i) => {
+    const issuer = `did:plc:issuer${String(i).padStart(3, "0")}`;
+    return {
+      uri: `at://${WEARER}/at.tessera.flair.badge/${issuer}:${DEF}`,
+      value: { issuer, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+    };
+  });
+  let defReads = 0;
+  const flairs = createFlairs({
+    fetch: (async (input: string | URL): Promise<Response> => {
+      const url = input.toString();
+      if (url.includes("listRecords")) {
+        return new Response(JSON.stringify({ records }), { status: 200 });
+      }
+      if (url.includes("collection=at.tessera.flair.def")) {
+        defReads++;
+        return new Response(
+          JSON.stringify({
+            value: { name: "Skytess-Pilot", policy: "open", createdAt: "2026-01-01T00:00:00Z" },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("null", { status: 404 });
+    }) as typeof fetch,
+  });
+  const worn = await flairs.listWornFlairs(WEARER);
+  assert.equal(worn.length, 30, "at most MAX_WORN_CHECKS entries are returned");
+  assert.equal(defReads, 30, "only the first 30 deduped badges are ever verified");
+});
+
+test("listWornFlairs: duplicate badge records never crowd real pairs out of the cap slots", async () => {
+  // 40 duplicates of ONE pair interleaved with 30 distinct pairs. Dedup runs
+  // before the cap, so the duplicates must collapse to a single slot and all
+  // 30 distinct pairs (31 deduped total -> capped to 30) still get verified.
+  const dupIssuer = "did:plc:dupissuer";
+  const records: Array<{ uri: string; value: Record<string, unknown> }> = [];
+  for (let i = 0; i < 30; i++) {
+    const issuer = `did:plc:issuer${String(i).padStart(3, "0")}`;
+    records.push({
+      uri: `at://${WEARER}/at.tessera.flair.badge/${issuer}:${DEF}`,
+      value: { issuer, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+    });
+    // Interleave duplicates so they would occupy early slots if dedup ran late.
+    records.push({
+      uri: `at://${WEARER}/at.tessera.flair.badge/${dupIssuer}:${DEF}`,
+      value: { issuer: dupIssuer, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+    });
+  }
+  for (let i = 0; i < 10; i++) {
+    records.push({
+      uri: `at://${WEARER}/at.tessera.flair.badge/${dupIssuer}:${DEF}`,
+      value: { issuer: dupIssuer, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+    });
+  }
+  const seenIssuers = new Set<string>();
+  const flairs = createFlairs({
+    fetch: (async (input: string | URL): Promise<Response> => {
+      const url = input.toString();
+      if (url.includes("listRecords")) {
+        return new Response(JSON.stringify({ records }), { status: 200 });
+      }
+      if (url.includes("collection=at.tessera.flair.def")) {
+        const m = /repo=([^&]+)/.exec(url);
+        if (m) seenIssuers.add(decodeURIComponent(m[1]));
+        return new Response(
+          JSON.stringify({
+            value: { name: "Skytess-Pilot", policy: "open", createdAt: "2026-01-01T00:00:00Z" },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("null", { status: 404 });
+    }) as typeof fetch,
+  });
+  const worn = await flairs.listWornFlairs(WEARER);
+  assert.equal(worn.length, 30, "31 deduped pairs cap to 30 results");
+  assert.equal(
+    seenIssuers.size,
+    30,
+    "duplicates collapse to one slot; distinct pairs fill the rest",
+  );
+  assert.ok(seenIssuers.has(dupIssuer), "the duplicated pair itself is verified once");
+});
+
+test("listWornFlairs: a limit parameter narrows the cap but never raises it", async () => {
+  const N = 10;
+  const records = Array.from({ length: N }, (_, i) => {
+    const issuer = `did:plc:issuer${String(i).padStart(3, "0")}`;
+    return {
+      uri: `at://${WEARER}/at.tessera.flair.badge/${issuer}:${DEF}`,
+      value: { issuer, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+    };
+  });
+  const flairs = createFlairs({
+    fetch: (async (input: string | URL): Promise<Response> => {
+      const url = input.toString();
+      if (url.includes("listRecords")) {
+        return new Response(JSON.stringify({ records }), { status: 200 });
+      }
+      if (url.includes("collection=at.tessera.flair.def")) {
+        return new Response(
+          JSON.stringify({
+            value: { name: "Skytess-Pilot", policy: "open", createdAt: "2026-01-01T00:00:00Z" },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("null", { status: 404 });
+    }) as typeof fetch,
+  });
+  assert.equal((await flairs.listWornFlairs(WEARER, 3)).length, 3);
+  // Asking for more than MAX_WORN_CHECKS is clamped down, not honored.
+  assert.equal((await flairs.listWornFlairs(WEARER, 1000)).length, 10);
+});
+
+test("listWornFlairs: one badge's def-fetch rejecting does not drop the others (parallel, fail-closed per pair)", async () => {
+  const failIssuer = "did:plc:failing777";
+  const records = [
+    {
+      uri: `at://${WEARER}/at.tessera.flair.badge/${ISSUER}:${DEF}`,
+      value: { issuer: ISSUER, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+    },
+    {
+      uri: `at://${WEARER}/at.tessera.flair.badge/${failIssuer}:${DEF}`,
+      value: { issuer: failIssuer, def: DEF, createdAt: "2026-01-01T00:00:00Z" },
+    },
+  ];
+  const flairs = createFlairs({
+    fetch: (async (input: string | URL): Promise<Response> => {
+      const url = input.toString();
+      if (url.includes("listRecords")) {
+        return new Response(JSON.stringify({ records }), { status: 200 });
+      }
+      if (url.includes(`repo=${encodeURIComponent(failIssuer)}`)) {
+        throw new Error("network down");
+      }
+      if (url.includes("collection=at.tessera.flair.def")) {
+        return new Response(
+          JSON.stringify({
+            value: { name: "Skytess-Pilot", policy: "open", createdAt: "2026-01-01T00:00:00Z" },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("null", { status: 404 });
+    }) as typeof fetch,
+  });
+  const worn = await flairs.listWornFlairs(WEARER);
+  assert.deepEqual(worn, [
+    { issuer: ISSUER, def: DEF, name: "Skytess-Pilot", policy: "open" },
+  ]);
+});
+
 test("listWornFlairs carries imageCid and drops a mismatched-image badge", async () => {
   const matchingBadgeList = {
     match: "listRecords",
