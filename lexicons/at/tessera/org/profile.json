@@ -27,6 +27,10 @@
             "type": "boolean",
             "description": "Opt-in to the public directory. Absent or false = the org is NOT listed anywhere and only reachable by handle/DID — the default, because nobody ever consented to standing in a directory. Directory listings MUST require this to be exactly true. Marking an org-shaped account as an organisation in search results is independent of this flag: being an org is itself a public record."
           },
+          "inviteOnly": {
+            "type": "boolean",
+            "description": "When true, the org does not take join requests — membership starts only with an invitation from the org. Absent or false = anyone may apply (the default: an application is a knock on the door, not an imposition). Clients MUST hide their join-request affordance and servers MUST reject join requests while this is true."
+          },
           "createdAt": { "type": "string", "format": "datetime" }
         }
       }
