@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  buildAtprotoLoopbackClientMetadata,
   NodeOAuthClient,
   type NodeSavedSession,
   type NodeSavedState,
+  type OAuthClientMetadataInput,
 } from '@atproto/oauth-client-node';
 import Database from 'better-sqlite3';
 
@@ -140,10 +142,89 @@ export interface NodeAuthConfig {
 }
 
 /**
+ * `true` iff `appUrl` is a plain-http loopback origin (`localhost` /
+ * `127.0.0.1` / `[::1]`) — i.e. local dev, as opposed to a real https
+ * deployment.
+ */
+function isLoopbackAppUrl(appUrl: string): boolean {
+  const u = new URL(appUrl);
+  return (
+    u.protocol === 'http:' &&
+    (u.hostname === 'localhost' ||
+      u.hostname === '127.0.0.1' ||
+      u.hostname === '[::1]' ||
+      u.hostname === '::1')
+  );
+}
+
+/**
+ * Builds the `NodeOAuthClient` client-metadata for a given app origin.
+ *
+ * Split out as a pure function (rather than inlined in
+ * `createTesseraNodeClient`) so it's testable without dragging in the SQLite
+ * stores.
+ *
+ * Two branches:
+ *
+ * - **Prod** (`https://…`): the standard hosted client, identified by its
+ *   `client-metadata.json` URL, exactly as before this fix.
+ * - **Dev/loopback** (`http://localhost:*` or `http://127.0.0.1:*`): atproto
+ *   OAuth (`@atproto/oauth-types`'s zod schemas) rejects `localhost` in
+ *   `redirect_uris` per RFC 8252 (loopback redirects must use the literal IP,
+ *   not the `localhost` name) and rejects a non-https `client_id`. We build
+ *   the canonical atproto *loopback client* via
+ *   `buildAtprotoLoopbackClientMetadata` instead, which needs no hosted
+ *   metadata document at all: `client_id` becomes a self-describing
+ *   `http://localhost?scope=…&redirect_uri=…` URL that PDSes accept as-is.
+ *   The redirect URI's hostname is rewritten from whatever the caller passed
+ *   (`localhost` or `127.0.0.1`) to `127.0.0.1` — so an env var of
+ *   `http://localhost:3000` keeps working without every app having to know
+ *   the RFC 8252 wrinkle. Because of that rewrite, **the callback lands on
+ *   `127.0.0.1`**: the dev must browse the app via `http://127.0.0.1:<port>`,
+ *   not `http://localhost:<port>` — cookies are origin-bound, so a
+ *   `localhost` tab would not see the session set on the `127.0.0.1`
+ *   callback.
+ *
+ * Prod behavior is byte-identical to before.
+ */
+export function buildClientMetadataForAppUrl(
+  appUrl: string,
+  clientName: string,
+  scope?: string,
+): OAuthClientMetadataInput {
+  const normalizedAppUrl = appUrl.replace(/\/$/, '');
+  const resolvedScope = scope ?? 'atproto transition:generic';
+
+  if (isLoopbackAppUrl(normalizedAppUrl)) {
+    const callbackUrl = new URL(`${normalizedAppUrl}/oauth/callback`);
+    callbackUrl.hostname = '127.0.0.1';
+    return buildAtprotoLoopbackClientMetadata({
+      scope: resolvedScope,
+      redirect_uris: [callbackUrl.toString()],
+    });
+  }
+
+  return {
+    client_id: `${normalizedAppUrl}/client-metadata.json`,
+    client_name: clientName,
+    client_uri: normalizedAppUrl,
+    redirect_uris: [`${normalizedAppUrl}/oauth/callback`],
+    scope: resolvedScope,
+    grant_types: ['authorization_code', 'refresh_token'],
+    response_types: ['code'],
+    application_type: 'web',
+    token_endpoint_auth_method: 'none',
+    dpop_bound_access_tokens: true,
+  };
+}
+
+/**
  * The standard Tessera app client: hosted client-metadata at
  * `${appUrl}/client-metadata.json`, callback at `${appUrl}/oauth/callback`,
  * DPoP, SQLite stores, refresh lock. Call once and keep the instance (e.g.
  * behind a globalThis singleton) — it owns the database connection.
+ *
+ * For loopback `appUrl`s (local dev), see `buildClientMetadataForAppUrl`.
  */
 export function createTesseraNodeClient(config: NodeAuthConfig): NodeOAuthClient {
   const appUrl = config.appUrl.replace(/\/$/, '');
@@ -152,18 +233,11 @@ export function createTesseraNodeClient(config: NodeAuthConfig): NodeOAuthClient
 
   return new NodeOAuthClient({
     requestLock,
-    clientMetadata: {
-      client_id: `${appUrl}/client-metadata.json`,
-      client_name: config.clientName,
-      client_uri: appUrl,
-      redirect_uris: [`${appUrl}/oauth/callback`],
-      scope: config.scope ?? 'atproto transition:generic',
-      grant_types: ['authorization_code', 'refresh_token'],
-      response_types: ['code'],
-      application_type: 'web',
-      token_endpoint_auth_method: 'none',
-      dpop_bound_access_tokens: true,
-    },
+    clientMetadata: buildClientMetadataForAppUrl(
+      appUrl,
+      config.clientName,
+      config.scope,
+    ),
     stateStore,
     sessionStore,
   });

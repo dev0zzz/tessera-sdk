@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  buildClientMetadataForAppUrl,
   createSqliteStores,
   openOAuthDb,
   requestLock,
@@ -57,4 +58,31 @@ test('requestLock survives a failing predecessor', async () => {
   const next = requestLock('c', async () => 'ok');
   await assert.rejects(failing, /boom/);
   assert.equal(await next, 'ok');
+});
+
+test('buildClientMetadataForAppUrl: http://localhost appUrl builds a loopback client', () => {
+  const meta = buildClientMetadataForAppUrl('http://localhost:3000', 'Tessera Dev');
+  assert.ok(
+    (meta.client_id as string).startsWith('http://localhost?'),
+    `expected client_id to start with http://localhost?, got ${meta.client_id}`,
+  );
+  assert.deepEqual(meta.redirect_uris, ['http://127.0.0.1:3000/oauth/callback']);
+  assert.equal(meta.token_endpoint_auth_method, 'none');
+});
+
+test('buildClientMetadataForAppUrl: http://127.0.0.1 appUrl builds the same loopback client', () => {
+  const meta = buildClientMetadataForAppUrl('http://127.0.0.1:3000', 'Tessera Dev');
+  assert.ok(
+    (meta.client_id as string).startsWith('http://localhost?'),
+    `expected client_id to start with http://localhost?, got ${meta.client_id}`,
+  );
+  assert.deepEqual(meta.redirect_uris, ['http://127.0.0.1:3000/oauth/callback']);
+  assert.equal(meta.token_endpoint_auth_method, 'none');
+});
+
+test('buildClientMetadataForAppUrl: https appUrl keeps the hosted client-metadata shape', () => {
+  const meta = buildClientMetadataForAppUrl('https://tessera.at', 'Tessera');
+  assert.equal(meta.client_id, 'https://tessera.at/client-metadata.json');
+  assert.deepEqual(meta.redirect_uris, ['https://tessera.at/oauth/callback']);
+  assert.equal(meta.token_endpoint_auth_method, 'none');
 });
