@@ -61,6 +61,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsc -b",
+    "prepare": "npm run build",
     "test": "node --test test/*.test.ts",
     "prepublishOnly": "npm run build"
   },
