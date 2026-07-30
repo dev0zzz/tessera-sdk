@@ -523,3 +523,74 @@ export {
   isEncryptedCobText,
   type EncryptionKeypair,
 } from "./encryption.js";
+
+/**
+ * Reads the 32-byte seed back out of an OpenSSH private key file.
+ *
+ * The counterpart to `toOpenSshPrivateKey`, needed because a device's
+ * encryption key is DERIVED from this seed (see ./encryption.ts). A machine
+ * that already has a Radicle key must be able to derive it too, not only one
+ * that just minted one — otherwise every existing device would be locked out
+ * of encrypted repositories.
+ *
+ * Handles unencrypted key files only. An encrypted one needs bcrypt_pbkdf,
+ * which is not worth carrying here: `ssh-keygen -p` can decrypt a copy, and
+ * the caller already has that binary (it signs with it).
+ */
+export function seedFromOpenSshPrivateKey(pem: string): Uint8Array {
+  const body = pem
+    .replace(/-----BEGIN OPENSSH PRIVATE KEY-----/, "")
+    .replace(/-----END OPENSSH PRIVATE KEY-----/, "")
+    .replace(/\s+/g, "");
+  const blob = fromBase64(body);
+
+  let off = 0;
+  const magic = new TextDecoder().decode(blob.subarray(0, OPENSSH_MAGIC.length));
+  if (magic !== "openssh-key-v1\0") throw new Error("not an OpenSSH private key");
+  off = OPENSSH_MAGIC.length;
+
+  const readString = (): Uint8Array => {
+    if (off + 4 > blob.length) throw new Error("truncated key file");
+    const len = new DataView(blob.buffer, blob.byteOffset).getUint32(off);
+    off += 4;
+    if (off + len > blob.length) throw new Error("truncated key file");
+    const out = blob.subarray(off, off + len);
+    off += len;
+    return out;
+  };
+
+  const cipher = new TextDecoder().decode(readString());
+  const kdf = new TextDecoder().decode(readString());
+  readString(); // kdfoptions
+  if (cipher !== "none" || kdf !== "none") {
+    throw new Error("key file is passphrase-protected; decrypt it first");
+  }
+
+  const count = new DataView(blob.buffer, blob.byteOffset).getUint32(off);
+  off += 4;
+  if (count !== 1) throw new Error(`expected one key, found ${count}`);
+
+  readString(); // public key blob
+  const priv = readString();
+
+  // check ‖ check ‖ "ssh-ed25519" ‖ public ‖ seed‖public ‖ comment
+  let p = 0;
+  const readPriv = (): Uint8Array => {
+    const len = new DataView(priv.buffer, priv.byteOffset).getUint32(p);
+    p += 4;
+    const out = priv.subarray(p, p + len);
+    p += len;
+    return out;
+  };
+  const dv = new DataView(priv.buffer, priv.byteOffset);
+  if (dv.getUint32(0) !== dv.getUint32(4)) {
+    throw new Error("check bytes differ — wrong passphrase or corrupt file");
+  }
+  p = 8;
+  const type = new TextDecoder().decode(readPriv());
+  if (type !== "ssh-ed25519") throw new Error(`unsupported key type ${type}`);
+  readPriv(); // public key
+  const secret = readPriv(); // seed ‖ public
+  if (secret.length !== 64) throw new Error("unexpected ed25519 secret length");
+  return new Uint8Array(secret.subarray(0, 32));
+}

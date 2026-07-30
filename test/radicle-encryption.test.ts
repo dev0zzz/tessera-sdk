@@ -165,3 +165,76 @@ test("an empty file encrypts and decrypts", async () => {
 test("a wrong-sized seed is refused rather than silently padded", async () => {
   await assert.rejects(() => deriveEncryptionKeypair(new Uint8Array(16)));
 });
+
+test("a written key file reads back to the same seed", async () => {
+  // Round-trip against our own writer AND against ssh-keygen's opinion of the
+  // file, so this cannot drift into a format only we accept.
+  const { seedFromOpenSshPrivateKey, toOpenSshPrivateKey, toOpenSshPublicKey } = await import(
+    "../dist/radicle/index.js"
+  );
+  const seed = new Uint8Array(32).fill(7);
+  const pem = toOpenSshPrivateKey(seed, "roundtrip");
+  assert.deepEqual(seedFromOpenSshPrivateKey(pem), seed);
+
+  // And the derived encryption key matches what the seed gives directly.
+  const fromFile = await deriveEncryptionKeypair(seedFromOpenSshPrivateKey(pem));
+  const fromSeed = await deriveEncryptionKeypair(seed);
+  assert.deepEqual(fromFile.publicKey, fromSeed.publicKey);
+  assert.ok(toOpenSshPublicKey(seed).startsWith("ssh-ed25519 "));
+});
+
+test("a passphrase-protected key file is refused with a usable message", async () => {
+  const { seedFromOpenSshPrivateKey } = await import("../dist/radicle/index.js");
+  // A real encrypted header: cipher aes256-ctr, kdf bcrypt.
+  const enc =
+    "-----BEGIN OPENSSH PRIVATE KEY-----\n" +
+    Buffer.from(
+      Buffer.concat([
+        Buffer.from("openssh-key-v1\0", "binary"),
+        Buffer.from([0, 0, 0, 10]), Buffer.from("aes256-ctr"),
+        Buffer.from([0, 0, 0, 6]), Buffer.from("bcrypt"),
+        Buffer.from([0, 0, 0, 0]),
+      ]),
+    ).toString("base64") +
+    "\n-----END OPENSSH PRIVATE KEY-----\n";
+  assert.throws(() => seedFromOpenSshPrivateKey(enc), /passphrase-protected/);
+});
+
+test("garbage is rejected rather than yielding a wrong seed", async () => {
+  const { seedFromOpenSshPrivateKey } = await import("../dist/radicle/index.js");
+  assert.throws(() => seedFromOpenSshPrivateKey("not a key at all"));
+});
+
+test("a key file written by real ssh-keygen reads back correctly", async () => {
+  // The one that matters: our writer and reader could agree on a format that
+  // OpenSSH does not use. This starts from ssh-keygen's own output.
+  const { execFileSync } = await import("node:child_process");
+  const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { seedFromOpenSshPrivateKey, nidFromPublicKey } = await import(
+    "../dist/radicle/index.js"
+  );
+  const { ed25519 } = await import("@noble/curves/ed25519");
+
+  const dir = mkdtempSync(join(tmpdir(), "sdk-sshkey-"));
+  try {
+    const key = join(dir, "id");
+    execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-C", "test", "-f", key]);
+    const seed = seedFromOpenSshPrivateKey(readFileSync(key, "utf8"));
+    assert.equal(seed.length, 32);
+
+    // The public key we derive must equal the one ssh-keygen printed. The .pub
+    // line holds an SSH blob — string("ssh-ed25519") ‖ string(key) — so the raw
+    // key starts at 4+11+4 = 19.
+    const blob = Buffer.from(readFileSync(`${key}.pub`, "utf8").split(/\s+/)[1], "base64");
+    assert.deepEqual(
+      new Uint8Array(blob.subarray(19, 51)),
+      ed25519.getPublicKey(seed),
+      "derived public key must match ssh-keygen's",
+    );
+    assert.ok(nidFromPublicKey(ed25519.getPublicKey(seed)).startsWith("z"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
